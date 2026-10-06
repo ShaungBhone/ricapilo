@@ -1,4 +1,6 @@
-# Ricapilo
+<h1 align="center">
+  <img src="docs/assets/audio-lines.svg" alt="" width="24" height="24"> Ricapilo
+</h1>
 
 An open-source Burmese AI recap workspace: Laravel 13 API, Next.js 16 frontend, and an isolated FFmpeg video renderer. Uses Bun, Docker Compose, Laravel, and shadcn.
 
@@ -29,17 +31,6 @@ docker compose exec api php artisan recap:admin you@example.com
 ```
 
 Open Administration and save the YouTube key. Administrators can also disable individual model IDs. User-supplied API keys are encrypted and never returned by the API. Each user's assistants, projects, files, and conversation history are private.
-
-## Workflow
-
-1. Type a prompt on Home, or record a voice prompt using a configured assistant.
-2. Search YouTube, Dailymotion, or both. The assistant can translate Burmese requests into concise search queries.
-3. Select a result to create a project, or create a project with an upload or transcript.
-4. Generate the Burmese script, review it, and save changes.
-5. Generate narration, choose a caption style, and render a vertical or landscape video.
-6. Preview and download the text script, MP3, and MP4.
-
-Each paid generation is explicitly started by the user. Search, generation, and login requests are throttled. Output text and audio quality depends on the selected models. Test the short voice preview with Burmese before generating a long project.
 
 ## Source access and generation behavior
 
