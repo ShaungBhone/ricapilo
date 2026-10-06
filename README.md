@@ -45,7 +45,7 @@ Each paid generation is explicitly started by the user. Search, generation, and 
 
 Search results are metadata, not media access guarantees. Selection records only a supported platform and video ID. The worker attempts to retrieve available media using yt-dlp, then FFmpeg extracts audio in four-minute chunks. If a platform blocks retrieval, the project reports that failure and accepts an upload or transcript. The app never fabricates a transcript from a title.
 
-The initial video assembly uses available source footage with Burmese narration and burned-in captions. A transcript-only project produces a simple caption video. It does not include a timeline editor. Two basic caption styles are included: clean bottom and boxed minimal.
+The initial video assembly uses available source footage with Burmese narration and burned-in captions. A transcript-only or audio-only project produces a simple caption video. It does not include a timeline editor. Two basic caption styles are included: clean bottom and boxed minimal.
 
 Caption timing is currently estimated from each narration paragraph's measured duration. It is not word-level alignment. The Remotion caption preview is a visual timing preview; the rendered MP4 is the authoritative video with source footage and narration.
 
