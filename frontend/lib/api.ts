@@ -1,3 +1,5 @@
+import { browserLocale } from "@/i18n/locales";
+import { translateMessage } from "@/i18n/messages";
 export const API = "/api/backend/api/v1";
 export class ApiError extends Error {
   constructor(
@@ -14,12 +16,20 @@ export async function api<T>(
 ): Promise<T> {
   const method = options.method || "GET";
   if (!["GET", "HEAD"].includes(method) && !csrf) {
-    const r = await fetch(`${API}/csrf`, { credentials: "same-origin" });
-    if (!r.ok) throw new ApiError("API ကို ချိတ်ဆက်၍မရပါ။", r.status);
+    const r = await fetch(`${API}/csrf`, {
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": browserLocale(),
+      },
+    });
+    if (!r.ok)
+      throw new ApiError(translateMessage("shared.apiUnavailable"), r.status);
     csrf = (await r.json()).token;
   }
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
+  headers.set("Accept-Language", browserLocale());
   if (csrf) headers.set("X-CSRF-TOKEN", csrf);
   if (options.body && !(options.body instanceof FormData))
     headers.set("Content-Type", "application/json");
@@ -30,12 +40,12 @@ export async function api<T>(
   });
   if (res.status === 419) {
     csrf = null;
-    throw new ApiError("စာမျက်နှာကို ပြန်ဖွင့်ပြီး ထပ်ကြိုးစားပါ။", 419);
+    throw new ApiError(translateMessage("shared.reloadPage"), 419);
   }
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new ApiError(
-      data.message || "တောင်းဆိုမှု မအောင်မြင်ပါ။",
+      data.message || translateMessage("shared.requestFailed"),
       res.status,
     );
   }

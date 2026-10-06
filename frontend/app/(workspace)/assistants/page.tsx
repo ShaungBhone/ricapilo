@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, json, Assistant, Model } from "@/lib/api";
@@ -31,6 +33,8 @@ const initial = {
   enabled: true,
 };
 export default function Assistants() {
+  const t = useTranslations();
+
   const [list, setList] = useState<Assistant[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const [draft, setDraft] = useState<typeof initial & { id?: number }>(initial);
@@ -56,7 +60,7 @@ export default function Assistants() {
       await refresh();
       setDraft(initial);
       setEditing(false);
-      setMessage("လက်ထောက် သိမ်းပြီးပါပြီ။");
+      setMessage(t("assistants.assistantSaved"));
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
@@ -69,14 +73,14 @@ export default function Assistants() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">လက်ထောက်များ</h1>
+        <h1 className="text-2xl font-semibold">{t("workspace.assistants")}</h1>
         <Button
           onClick={() => {
             setDraft(initial);
             setEditing(true);
           }}
         >
-          လက်ထောက်အသစ်
+          {t("assistants.newAssistant")}
         </Button>
       </div>
       <Feedback message={message} />
@@ -85,17 +89,21 @@ export default function Assistants() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {draft.id ? "လက်ထောက် ပြင်ဆင်ရန်" : "လက်ထောက် ဖန်တီးရန်"}
+              {draft.id
+                ? t("assistants.editAssistant")
+                : t("assistants.createAssistant")}
             </CardTitle>
             <CardDescription>
-              Model နှင့် voice ID များကို အချိန်မရွေး ပြောင်းနိုင်ပါသည်။
+              {t("assistants.youCanChangeModelAndVoiceIdsAt")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form id="assistant-form" onSubmit={save}>
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="name">အမည်</FieldLabel>
+                  <FieldLabel htmlFor="name">
+                    {t("authentication.name")}
+                  </FieldLabel>
                   <Input
                     id="name"
                     required
@@ -112,9 +120,9 @@ export default function Assistants() {
                         <FieldLabel htmlFor={key}>
                           {
                             [
-                              "AI model",
-                              "အသံမှ စာပြောင်း model",
-                              "အသံဖန်တီး model",
+                              t("shared.aiModel"),
+                              t("assistants.transcriptionModel"),
+                              t("assistants.speechModel"),
                             ][i]
                           }
                         </FieldLabel>
@@ -128,7 +136,7 @@ export default function Assistants() {
                           className="w-full"
                         >
                           <NativeSelectOption value="">
-                            Model ရွေးပါ
+                            {t("assistants.chooseAModel")}
                           </NativeSelectOption>
                           {models
                             .filter(
@@ -147,7 +155,9 @@ export default function Assistants() {
                   )}
                 </div>
                 <Field>
-                  <FieldLabel htmlFor="voice">Voice ID</FieldLabel>
+                  <FieldLabel htmlFor="voice">
+                    {t("assistants.voiceId")}
+                  </FieldLabel>
                   <Input
                     id="voice"
                     required
@@ -166,7 +176,7 @@ export default function Assistants() {
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="instructions">
-                    လက်ထောက်အတွက် ညွှန်ကြားချက်
+                    {t("assistants.assistantInstructions")}
                   </FieldLabel>
                   <Textarea
                     id="instructions"
@@ -179,7 +189,9 @@ export default function Assistants() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="greeting">ပထမနှုတ်ဆက်စကား</FieldLabel>
+                  <FieldLabel htmlFor="greeting">
+                    {t("assistants.firstGreeting")}
+                  </FieldLabel>
                   <Input
                     id="greeting"
                     value={draft.first_message}
@@ -190,7 +202,7 @@ export default function Assistants() {
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="silence">
-                    စကားပြောပြီးနောက် စောင့်ချိန် (ms)
+                    {t("assistants.silenceDelayAfterSpeakingMs")}
                   </FieldLabel>
                   <Input
                     id="silence"
@@ -204,7 +216,9 @@ export default function Assistants() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="enabled">အသုံးပြုမှု</FieldLabel>
+                  <FieldLabel htmlFor="enabled">
+                    {t("assistants.usage")}
+                  </FieldLabel>
                   <NativeSelect
                     id="enabled"
                     value={String(draft.enabled)}
@@ -213,10 +227,10 @@ export default function Assistants() {
                     }
                   >
                     <NativeSelectOption value="true">
-                      ဖွင့်ထားရန်
+                      {t("assistants.enable")}
                     </NativeSelectOption>
                     <NativeSelectOption value="false">
-                      ပိတ်ထားရန်
+                      {t("assistants.disable")}
                     </NativeSelectOption>
                   </NativeSelect>
                 </Field>
@@ -225,18 +239,18 @@ export default function Assistants() {
           </CardContent>
           <CardFooter className="gap-3">
             <Button disabled={busy} form="assistant-form" type="submit">
-              သိမ်းရန်
+              {t("administration.save")}
             </Button>
             <Button variant="outline" onClick={() => setEditing(false)}>
-              ပယ်ဖျက်ရန်
+              {t("assistants.cancel")}
             </Button>
           </CardFooter>
         </Card>
       )}
       {!list.length && !editing && (
         <Blank
-          title="လက်ထောက် မရှိသေးပါ"
-          description="သင့် model၊ voice နှင့် ညွှန်ကြားချက်များဖြင့် လက်ထောက်တစ်ခု ဖန်တီးပါ။"
+          title={t("assistants.noAssistantsYet")}
+          description={t("assistants.createAnAssistantWithYourModelsVoiceAnd")}
         />
       )}
       <div className="grid gap-5 md:grid-cols-2">
@@ -245,7 +259,7 @@ export default function Assistants() {
             <CardHeader>
               <CardTitle>{a.name}</CardTitle>
               <CardDescription>
-                {a.enabled ? "အသုံးပြုနိုင်သည်" : "ပိတ်ထားသည်"}
+                {a.enabled ? t("assistants.enabled") : t("assistants.disabled")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -261,7 +275,7 @@ export default function Assistants() {
                 className={buttonVariants({ size: "sm" })}
                 href={`/talk?assistant=${a.id}`}
               >
-                စကားပြောရန်
+                {t("assistants.talk")}
               </Link>
               <Button
                 variant="outline"
@@ -282,7 +296,7 @@ export default function Assistants() {
                   }
                 }}
               >
-                အသံ နားထောင်ရန်
+                {t("assistants.previewVoice")}
               </Button>
               <Button
                 variant="outline"
@@ -292,13 +306,13 @@ export default function Assistants() {
                   setEditing(true);
                 }}
               >
-                ပြင်ဆင်ရန်
+                {t("assistants.edit")}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={async () => {
-                  if (!confirm("ဤလက်ထောက်ကို ဖျက်မလား။")) return;
+                  if (!confirm(t("assistants.deleteThisAssistant"))) return;
                   try {
                     await api(`/assistants/${a.id}`, { method: "DELETE" });
                     await refresh();
@@ -307,7 +321,7 @@ export default function Assistants() {
                   }
                 }}
               >
-                ဖျက်ရန်
+                {t("assistants.delete")}
               </Button>
             </CardFooter>
           </Card>

@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, Conversation, Page } from "@/lib/api";
@@ -14,6 +16,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Blank, Feedback } from "@/components/feedback";
 import { Transcript } from "@/components/transcript";
 export default function Conversations() {
+  const t = useTranslations();
+
   const [list, setList] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<Conversation | null>(null);
   const [message, setMessage] = useState("");
@@ -24,12 +28,12 @@ export default function Conversations() {
   }, []);
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">စကားဝိုင်းများ</h1>
+      <h1 className="text-2xl font-semibold">{t("workspace.conversations")}</h1>
       <Feedback message={message} />
       {!list.length && (
         <Blank
-          title="စကားဝိုင်း မရှိသေးပါ"
-          description="လက်ထောက်တစ်ခုကို ရွေးပြီး စကားပြောပါ။"
+          title={t("conversations.noConversationsYet")}
+          description={t("conversations.chooseAnAssistantAndStartTalking")}
         />
       )}
       <div className="grid gap-4 md:grid-cols-2">
@@ -37,20 +41,22 @@ export default function Conversations() {
           <Card key={c.id}>
             <CardHeader>
               <CardTitle className="leading-7">{c.title}</CardTitle>
-              <CardDescription>{c.messages.length} messages</CardDescription>
+              <CardDescription>
+                {t("shared.messageCount", { count: c.messages.length })}
+              </CardDescription>
             </CardHeader>
             <CardFooter>
               <button
                 className={buttonVariants({ variant: "outline" })}
                 onClick={() => setSelected(c)}
               >
-                စာသား ကြည့်ရန်
+                {t("conversations.viewTranscript")}
               </button>
               <Link
                 className={buttonVariants({ variant: "ghost" })}
                 href={`/talk?assistant=${c.assistant_id}`}
               >
-                စကားဝိုင်းအသစ်
+                {t("conversations.newConversation")}
               </Link>
             </CardFooter>
           </Card>

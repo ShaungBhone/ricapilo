@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, json, Assistant, Project } from "@/lib/api";
@@ -17,6 +19,8 @@ import {
 } from "@/components/ui/native-select";
 import { Feedback } from "@/components/feedback";
 export default function NewProject() {
+  const t = useTranslations();
+
   const router = useRouter();
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [message, setMessage] = useState("");
@@ -57,18 +61,22 @@ export default function NewProject() {
   }
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">ပရောဂျက်အသစ်</h1>
+      <h1 className="text-2xl font-semibold">{t("projects.newProject")}</h1>
       <Feedback message={message} />
       <form onSubmit={submit}>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="title">ဇာတ်လမ်းအမည်</FieldLabel>
+            <FieldLabel htmlFor="title">{t("projects.storyTitle")}</FieldLabel>
             <Input id="title" name="title" required />
           </Field>
           <Field>
-            <FieldLabel htmlFor="assistant">လက်ထောက်</FieldLabel>
+            <FieldLabel htmlFor="assistant">
+              {t("conversations.assistant")}
+            </FieldLabel>
             <NativeSelect id="assistant" name="assistant" required>
-              <NativeSelectOption value="">ရွေးချယ်ပါ</NativeSelectOption>
+              <NativeSelectOption value="">
+                {t("conversations.choose")}
+              </NativeSelectOption>
               {assistants
                 .filter((a) => a.enabled)
                 .map((a) => (
@@ -79,7 +87,9 @@ export default function NewProject() {
             </NativeSelect>
           </Field>
           <Field>
-            <FieldLabel htmlFor="file">ဗီဒီယို သို့မဟုတ် အသံဖိုင်</FieldLabel>
+            <FieldLabel htmlFor="file">
+              {t("projects.videoOrAudioFile")}
+            </FieldLabel>
             <Input
               id="file"
               name="file"
@@ -87,22 +97,23 @@ export default function NewProject() {
               accept="video/mp4,video/webm,video/quicktime,audio/*"
             />
             <FieldDescription>
-              အများဆုံး 300 MB။ ရှည်လျားသောရင်းမြစ်အတွက် စာသားလည်း
-              ထည့်နိုင်ပါသည်။
+              {t("projects.maximum300MbYouCanAlsoPasteA")}
             </FieldDescription>
           </Field>
           <Field>
-            <FieldLabel htmlFor="transcript">မူရင်း စာသား</FieldLabel>
+            <FieldLabel htmlFor="transcript">
+              {t("projects.sourceTranscript")}
+            </FieldLabel>
             <Textarea
               id="transcript"
               name="transcript"
               rows={8}
-              placeholder="မည်သည့်ဘာသာစကားမဆို ထည့်နိုင်ပါသည်။"
+              placeholder={t("projects.youCanEnterTextInAnyLanguage")}
             />
           </Field>
           <Field>
             <FieldLabel htmlFor="seconds">
-              အနှစ်ချုပ်ကြာချိန် (စက္ကန့်)
+              {t("projects.recapDurationSeconds")}
             </FieldLabel>
             <Input
               id="seconds"
@@ -114,18 +125,20 @@ export default function NewProject() {
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="format">ဗီဒီယိုအချိုး</FieldLabel>
+            <FieldLabel htmlFor="format">
+              {t("projects.videoAspectRatio")}
+            </FieldLabel>
             <NativeSelect id="format" name="format">
               <NativeSelectOption value="vertical">
-                ဒေါင်လိုက် 9:16
+                {t("projects.vertical916")}
               </NativeSelectOption>
               <NativeSelectOption value="landscape">
-                အလျားလိုက် 16:9
+                {t("projects.landscape169")}
               </NativeSelectOption>
             </NativeSelect>
           </Field>
           <Button type="submit" disabled={busy}>
-            {busy ? "သိမ်းနေပါသည်…" : "ပရောဂျက် ဖန်တီးရန်"}
+            {busy ? t("projects.saving") : t("projects.createProject")}
           </Button>
         </FieldGroup>
       </form>

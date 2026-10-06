@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useRef, useState, useCallback } from "react";
 export function useMicrophone(
   onAudio: (blob: Blob) => void,
@@ -6,6 +8,8 @@ export function useMicrophone(
   automatic = false,
   onSpeech?: () => void,
 ) {
+  const t = useTranslations();
+
   const [active, setActive] = useState(false);
   const [error, setError] = useState("");
   const recorder = useRef<MediaRecorder | null>(null);
@@ -39,7 +43,7 @@ export function useMicrophone(
     try {
       if (!navigator.mediaDevices || !window.MediaRecorder)
         throw new Error(
-          "မိုက်ခရိုဖုန်းအတွက် HTTPS နှင့် ခေတ်မီ browser လိုအပ်ပါသည်။",
+          t("shared.theMicrophoneRequiresHttpsAndAModernBrowser"),
         );
       const media = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -53,9 +57,7 @@ export function useMicrophone(
         (m) => MediaRecorder.isTypeSupported(m),
       );
       if (!mime)
-        throw new Error(
-          "ဤ browser တွင် အသံဖမ်းယူမှု မပံ့ပိုးသေးပါ။ Chrome သို့မဟုတ် Firefox သုံးပါ။",
-        );
+        throw new Error(t("shared.audioRecordingIsNotSupportedInThisBrowser"));
       const rec = new MediaRecorder(media, { mimeType: mime });
       recorder.current = rec;
       const chunks: BlobPart[] = [];
@@ -109,7 +111,7 @@ export function useMicrophone(
       stop();
       setError((e as Error).message);
     }
-  }, [automatic, silenceMs, stop]);
+  }, [automatic, silenceMs, stop, t]);
   useEffect(
     () => () => {
       if (recorder.current) {

@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TriangleAlert } from "lucide-react";
@@ -17,6 +19,8 @@ import { api, User } from "@/lib/api";
 const UserContext = createContext<User | null>(null);
 export const useUser = () => useContext(UserContext);
 export function Workspace({ children }: { children: React.ReactNode }) {
+  const t = useTranslations();
+
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState("");
@@ -28,9 +32,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
         if (e.status === 401) {
           router.replace("/login");
         } else {
-          setError(
-            "API ကို ချိတ်ဆက်၍မရပါ။ Docker ဝန်ဆောင်မှုများ စတင်ထားကြောင်း စစ်ဆေးပါ။",
-          );
+          setError("workspace.cannotConnectToTheApiCheckThatThe");
         }
       });
   }, [router]);
@@ -39,7 +41,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-xl p-10">
         <Feedback message={error} />
         <Button className="mt-4" onClick={() => location.reload()}>
-          ထပ်ကြိုးစားရန်
+          {t("workspace.tryAgain")}
         </Button>
       </main>
     );
@@ -61,7 +63,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                 orientation="vertical"
                 className="h-4 data-vertical:self-center"
               />
-              <span className="text-sm">မြန်မာ AI စတူဒီယို</span>
+              <span className="text-sm">{t("workspace.burmeseAiStudio")}</span>
             </div>
           </header>
           <div className="mx-auto w-full max-w-6xl p-4 md:p-8">
@@ -69,11 +71,11 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               <div className="mb-6 flex flex-col gap-3">
                 <Alert variant="warning">
                   <TriangleAlert aria-hidden="true" />
-                  <AlertTitle>အသိပေးချက်</AlertTitle>
+                  <AlertTitle>{t("shared.notice")}</AlertTitle>
                   <AlertDescription>
                     {user.email_verification_required
-                      ? "AI မသုံးမီ သင့်အီးမေးလ်ကို အတည်ပြုပါ။"
-                      : "သင့်အီးမေးလ်ကို အတည်ပြုနိုင်ပါသည်။ အတည်မပြုဘဲလည်း AI ကို အသုံးပြုနိုင်ပါသည်။"}
+                      ? t("workspace.verifyYourEmailBeforeUsingAi")
+                      : t("workspace.youCanVerifyYourEmailAiIsAlso")}
                   </AlertDescription>
                 </Alert>
                 <Button
@@ -81,11 +83,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
                   className="w-fit"
                   onClick={() =>
                     api("/email/resend", { method: "POST" })
-                      .then(() => setNotice("အတည်ပြုအီးမေးလ် ပို့ပြီးပါပြီ။"))
+                      .then(() =>
+                        setNotice(t("workspace.verificationEmailSent")),
+                      )
                       .catch((e) => setNotice(e.message))
                   }
                 >
-                  အတည်ပြုအီးမေးလ် ပြန်ပို့ရန်
+                  {t("workspace.resendVerificationEmail")}
                 </Button>
               </div>
             )}

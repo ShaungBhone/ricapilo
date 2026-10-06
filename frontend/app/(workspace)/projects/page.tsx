@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, Project, Page } from "@/lib/api";
@@ -14,6 +16,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Feedback, Blank } from "@/components/feedback";
 export default function Projects() {
+  const t = useTranslations();
+
   const [page, setPage] = useState(1);
   const [data, setData] = useState<Page<Project> | null>(null);
   const [message, setMessage] = useState("");
@@ -25,16 +29,16 @@ export default function Projects() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">ပရောဂျက်များ</h1>
+        <h1 className="text-2xl font-semibold">{t("workspace.projects")}</h1>
         <Link className={buttonVariants()} href="/projects/new">
-          ပရောဂျက်အသစ်
+          {t("projects.newProject")}
         </Link>
       </div>
       <Feedback message={message} />
       {data?.total === 0 && (
         <Blank
-          title="သင့်ပထမ အနှစ်ချုပ်ကို ဖန်တီးပါ"
-          description="ပင်မစာမျက်နှာတွင် ဗီဒီယိုရှာပါ သို့မဟုတ် ကိုယ်ပိုင်ဖိုင် ထည့်ပါ။"
+          title={t("projects.createYourFirstRecap")}
+          description={t("projects.searchForAVideoOnHomeOrUpload")}
         />
       )}
       <div className="grid gap-5 md:grid-cols-2">
@@ -45,14 +49,18 @@ export default function Projects() {
               <CardTitle className="leading-7">{p.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="secondary">{p.status}</Badge>
+              <Badge variant="secondary">
+                {t.has(`projects.${p.status}`)
+                  ? t(`projects.${p.status}`)
+                  : p.status}
+              </Badge>
             </CardContent>
             <CardFooter>
               <Link
                 href={`/projects/${p.id}`}
                 className={buttonVariants({ variant: "outline" })}
               >
-                ဖွင့်ရန်
+                {t("projects.open")}
               </Link>
             </CardFooter>
           </Card>
@@ -61,16 +69,14 @@ export default function Projects() {
       {data && data.last_page > 1 && (
         <div className="flex items-center gap-4">
           <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
-            ရှေ့စာမျက်နှာ
+            {t("projects.previousPage")}
           </Button>
-          <span>
-            {page} / {data.last_page}
-          </span>
+          <span>{t("shared.pageCount", { page, total: data.last_page })}</span>
           <Button
             disabled={page === data.last_page}
             onClick={() => setPage(page + 1)}
           >
-            နောက်စာမျက်နှာ
+            {t("projects.nextPage")}
           </Button>
         </div>
       )}

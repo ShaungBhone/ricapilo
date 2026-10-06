@@ -1,7 +1,9 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,14 +26,17 @@ export function LoginForm({
 }: {
   mode?: "login" | "register" | "forgot" | "reset";
 }) {
+  const t = useTranslations();
+
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const title = {
-    login: "ပြန်လည်ကြိုဆိုပါတယ်",
-    register: "အကောင့်အသစ် ဖွင့်ပါ",
-    forgot: "စကားဝှက် ပြန်သတ်မှတ်ပါ",
-    reset: "စကားဝှက်အသစ် ထည့်ပါ",
+    login: t("authentication.welcomeBack"),
+    register: t("authentication.createAnAccount"),
+    forgot: t("authentication.resetYourPassword"),
+    reset: t("authentication.enterANewPassword"),
   }[mode];
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,8 +54,8 @@ export function LoginForm({
       } else {
         setMessage(
           mode === "forgot"
-            ? "အကောင့်ရှိပါက စကားဝှက်ပြန်သတ်မှတ်ရန် အီးမေးလ် ပို့ပြီးပါပြီ။"
-            : "စကားဝှက်အသစ်ဖြင့် ဝင်ရောက်နိုင်ပါပြီ။",
+            ? t("authentication.ifThatAccountExistsAPasswordResetEmail")
+            : t("authentication.youCanNowSignInWithYourNew"),
         );
       }
     } catch (e) {
@@ -65,7 +70,7 @@ export function LoginForm({
         <CardHeader className="text-center">
           <CardTitle className="text-xl">{title}</CardTitle>
           <CardDescription>
-            သင့်ဇာတ်လမ်းကို မြန်မာဘာသာဖြင့် ဖန်တီးပါ။
+            {t("authentication.createYourStoryInBurmese")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -73,12 +78,16 @@ export function LoginForm({
             <FieldGroup>
               {mode === "register" && (
                 <Field>
-                  <FieldLabel htmlFor="name">အမည်</FieldLabel>
+                  <FieldLabel htmlFor="name">
+                    {t("authentication.name")}
+                  </FieldLabel>
                   <Input id="name" name="name" required autoComplete="name" />
                 </Field>
               )}
               <Field>
-                <FieldLabel htmlFor="email">အီးမေးလ်</FieldLabel>
+                <FieldLabel htmlFor="email">
+                  {t("authentication.email")}
+                </FieldLabel>
                 <Input
                   id="email"
                   name="email"
@@ -86,17 +95,15 @@ export function LoginForm({
                   required
                   autoComplete="email"
                   defaultValue={
-                    mode === "reset" && typeof window !== "undefined"
-                      ? new URLSearchParams(window.location.search).get(
-                          "email",
-                        ) || ""
-                      : ""
+                    mode === "reset" ? searchParams.get("email") || "" : ""
                   }
                 />
               </Field>
               {mode !== "forgot" && (
                 <Field>
-                  <FieldLabel htmlFor="password">စကားဝှက်</FieldLabel>
+                  <FieldLabel htmlFor="password">
+                    {t("authentication.password")}
+                  </FieldLabel>
                   <Input
                     id="password"
                     name="password"
@@ -109,7 +116,9 @@ export function LoginForm({
                   />
                   {mode !== "login" && (
                     <FieldDescription>
-                      အနည်းဆုံး ၁၀ လုံး၊ အက္ခရာနှင့် နံပါတ် ပါဝင်ရမည်။
+                      {t(
+                        "authentication.atLeast10CharactersIncludingLettersAndNumbers",
+                      )}
                     </FieldDescription>
                   )}
                 </Field>
@@ -117,7 +126,7 @@ export function LoginForm({
               {(mode === "register" || mode === "reset") && (
                 <Field>
                   <FieldLabel htmlFor="password_confirmation">
-                    စကားဝှက် ထပ်ထည့်ပါ
+                    {t("authentication.confirmPassword")}
                   </FieldLabel>
                   <Input
                     id="password_confirmation"
@@ -131,18 +140,20 @@ export function LoginForm({
               <Feedback message={message} />
               <Field>
                 <Button disabled={busy} type="submit">
-                  {busy ? "ခဏစောင့်ပါ…" : title}
+                  {busy ? t("authentication.pleaseWait") : title}
                 </Button>
                 {mode === "login" && (
                   <FieldDescription className="text-center">
-                    <Link href="/forgot-password">စကားဝှက် မေ့နေပါသလား။</Link>
+                    <Link href="/forgot-password">
+                      {t("authentication.forgotYourPassword")}
+                    </Link>
                   </FieldDescription>
                 )}
                 <FieldDescription className="text-center">
                   <Link href={mode === "login" ? "/register" : "/login"}>
                     {mode === "login"
-                      ? "အကောင့်အသစ် ဖွင့်ရန်"
-                      : "အကောင့်ဝင်ရန်"}
+                      ? t("authentication.register")
+                      : t("authentication.signIn")}
                   </Link>
                 </FieldDescription>
               </Field>

@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'required' => ':attribute ကို ထည့်ရန် လိုအပ်ပါသည်။',
+    'string' => ':attribute သည် စာသား ဖြစ်ရပါမည်။',
+    'email' => ':attribute သည် မှန်ကန်သော အီးမေးလ် ဖြစ်ရပါမည်။',
+    'unique' => ':attribute ကို အသုံးပြုထားပြီး ဖြစ်ပါသည်။',
+    'confirmed' => ':attribute အတည်ပြုချက် မတူပါ။',
+    'integer' => ':attribute သည် ကိန်းပြည့် ဖြစ်ရပါမည်။',
+    'numeric' => ':attribute သည် နံပါတ် ဖြစ်ရပါမည်။',
+    'boolean' => ':attribute သည် true သို့မဟုတ် false ဖြစ်ရပါမည်။',
+    'in' => ':attribute ရွေးချယ်မှု မမှန်ပါ။',
+    'exists' => ':attribute ရွေးချယ်မှု မရှိပါ သို့မဟုတ် အသုံးပြု၍မရပါ။',
+    'regex' => ':attribute ပုံစံ မမှန်ပါ။',
+    'array' => ':attribute သည် စာရင်း ဖြစ်ရပါမည်။',
+    'file' => ':attribute သည် ဖိုင် ဖြစ်ရပါမည်။',
+    'uploaded' => ':attribute ဖိုင်တင်မှု မအောင်မြင်ပါ။',
+    'mimes' => ':attribute သည် :values ဖိုင်အမျိုးအစား ဖြစ်ရပါမည်။',
+    'mimetypes' => ':attribute သည် :values ဖိုင်အမျိုးအစား ဖြစ်ရပါမည်။',
+    'min' => ['numeric' => ':attribute သည် အနည်းဆုံး :min ဖြစ်ရပါမည်။', 'file' => ':attribute သည် အနည်းဆုံး :min KB ဖြစ်ရပါမည်။', 'string' => ':attribute သည် အနည်းဆုံး စာလုံး :min လုံး ဖြစ်ရပါမည်။', 'array' => ':attribute တွင် အနည်းဆုံး :min ခု ပါရပါမည်။'],
+    'max' => ['numeric' => ':attribute သည် :max ထက် မကျော်ရပါ။', 'file' => ':attribute သည် :max KB ထက် မကျော်ရပါ။', 'string' => ':attribute သည် စာလုံး :max လုံး ထက် မကျော်ရပါ။', 'array' => ':attribute တွင် :max ခု ထက် မကျော်ရပါ။'],
+    'between' => ['numeric' => ':attribute သည် :min နှင့် :max အကြား ဖြစ်ရပါမည်။', 'file' => ':attribute သည် :min နှင့် :max KB အကြား ဖြစ်ရပါမည်။', 'string' => ':attribute သည် စာလုံး :min နှင့် :max လုံး အကြား ဖြစ်ရပါမည်။', 'array' => ':attribute တွင် :min နှင့် :max ခု အကြား ပါရပါမည်။'],
+    'password' => ['letters' => ':attribute တွင် အနည်းဆုံး အက္ခရာတစ်လုံး ပါရပါမည်။', 'numbers' => ':attribute တွင် အနည်းဆုံး နံပါတ်တစ်လုံး ပါရပါမည်။', 'mixed' => ':attribute တွင် စာလုံးကြီးနှင့် စာလုံးသေး ပါရပါမည်။', 'symbols' => ':attribute တွင် အနည်းဆုံး သင်္ကေတတစ်ခု ပါရပါမည်။', 'uncompromised' => 'ပိုလုံခြုံသော :attribute ကို ရွေးပါ။'],
+    'attributes' => ['name' => 'အမည်', 'email' => 'အီးမေးလ်', 'password' => 'စကားဝှက်', 'password_confirmation' => 'စကားဝှက်အတည်ပြုချက်', 'title' => 'ဇာတ်လမ်းအမည်', 'assistant_id' => 'လက်ထောက်', 'source' => 'ရင်းမြစ်', 'source_id' => 'ဗီဒီယို ID', 'transcript' => 'မူရင်းစာသား', 'script' => 'ဇာတ်ညွှန်း', 'file' => 'ဖိုင်', 'audio' => 'အသံ', 'text' => 'စာသား', 'prompt' => 'တောင်းဆိုချက်', 'platform' => 'ပလက်ဖောင်း', 'stage' => 'ဖန်တီးမှုအဆင့်', 'format' => 'ဗီဒီယိုအချိုး', 'target_seconds' => 'အနှစ်ချုပ်ကြာချိန်', 'secret' => 'API key', 'voice' => 'အသံ ID', 'instructions' => 'လက်ထောက်ညွှန်ကြားချက်', 'first_message' => 'နှုတ်ဆက်စကား', 'llm_model' => 'AI model', 'stt_model' => 'အသံမှ စာပြောင်း model', 'tts_model' => 'အသံဖန်တီး model', 'silence_ms' => 'စောင့်ချိန်', 'enabled' => 'အသုံးပြုမှု', 'token' => 'Token', 'caption_style' => 'စာတန်းပုံစံ', 'conversation_id' => 'စကားဝိုင်း', 'speak' => 'အသံပြောရန်', 'youtube_key' => 'YouTube key', 'disabled_models' => 'ပိတ်ထားသော model များ'],
+];

@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { Conversation } from "@/lib/api";
 import {
   MessageScrollerProvider,
@@ -19,6 +21,8 @@ export function Transcript({
 }: {
   messages: Conversation["messages"];
 }) {
+  const t = useTranslations();
+
   return (
     <div className="h-[420px]">
       <MessageScrollerProvider autoScroll>
@@ -34,7 +38,9 @@ export function Transcript({
                   <Message align={m.role === "user" ? "end" : "start"}>
                     <MessageContent>
                       <MessageHeader>
-                        {m.role === "user" ? "သင်" : "AI လက်ထောက်"}
+                        {m.role === "user"
+                          ? t("conversations.you")
+                          : t("conversations.aiAssistant")}
                       </MessageHeader>
                       <Bubble
                         align={m.role === "user" ? "end" : "start"}

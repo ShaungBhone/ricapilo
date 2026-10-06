@@ -1,3 +1,5 @@
+"use client";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
@@ -5,10 +7,12 @@ import { cn } from "cn";
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
+  const t = useTranslations();
+
   return (
     <nav
-      aria-label="breadcrumb"
-      data-slot="breadcrumb"
+      aria-label={t("shared.breadcrumb")}
+      data-slot={t("shared.breadcrumb")}
       className={cn(className)}
       {...props}
     />
@@ -93,6 +97,8 @@ function BreadcrumbEllipsis({
   className,
   ...props
 }: React.ComponentProps<"span">) {
+  const t = useTranslations();
+
   return (
     <span
       data-slot="breadcrumb-ellipsis"
@@ -105,7 +111,7 @@ function BreadcrumbEllipsis({
       {...props}
     >
       <MoreHorizontalIcon />
-      <span className="sr-only">More</span>
+      <span className="sr-only">{t("shared.more")}</span>
     </span>
   );
 }

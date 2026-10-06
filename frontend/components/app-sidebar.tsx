@@ -1,4 +1,7 @@
 "use client";
+import { useTranslations } from "next-intl";
+
+import { LanguageSelector } from "@/components/language-selector";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -28,17 +31,23 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { api, User } from "@/lib/api";
 export function AppSidebar({ user }: { user: User }) {
+  const t = useTranslations();
+
   const path = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const items = [
-    { title: "ပင်မစာမျက်နှာ", url: "/", icon: Home },
-    { title: "လက်ထောက်များ", url: "/assistants", icon: Bot },
-    { title: "ပရောဂျက်များ", url: "/projects", icon: Clapperboard },
-    { title: "စကားဝိုင်းများ", url: "/conversations", icon: MessageSquare },
-    { title: "ဆက်တင်များ", url: "/settings", icon: Settings },
+    { title: t("workspace.home"), url: "/", icon: Home },
+    { title: t("workspace.assistants"), url: "/assistants", icon: Bot },
+    { title: t("workspace.projects"), url: "/projects", icon: Clapperboard },
+    {
+      title: t("workspace.conversations"),
+      url: "/conversations",
+      icon: MessageSquare,
+    },
+    { title: t("workspace.settings"), url: "/settings", icon: Settings },
     ...(user.is_admin
-      ? [{ title: "စီမံခန့်ခွဲမှု", url: "/admin", icon: Shield }]
+      ? [{ title: t("workspace.administration"), url: "/admin", icon: Shield }]
       : []),
   ];
   return (
@@ -52,7 +61,9 @@ export function AppSidebar({ user }: { user: User }) {
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">Ricapilo</span>
-                <span className="truncate text-xs">သင့်ဇာတ်လမ်း၊ သင့်အသံ</span>
+                <span className="truncate text-xs">
+                  {t("workspace.yourStoryYourVoice")}
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -60,7 +71,7 @@ export function AppSidebar({ user }: { user: User }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>ဖန်တီးမှုနေရာ</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("workspace.workspace")}</SidebarGroupLabel>
           <SidebarMenu>
             {items.map(({ title, url, icon: Icon }) => (
               <SidebarMenuItem key={url}>
@@ -78,14 +89,15 @@ export function AppSidebar({ user }: { user: User }) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        <LanguageSelector />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              tooltip="အရောင်ပြောင်းရန်"
+              tooltip={t("workspace.changeTheme")}
             >
               <Moon />
-              <span>အလင်း / အမှောင်</span>
+              <span>{t("workspace.lightDark")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -109,10 +121,10 @@ export function AppSidebar({ user }: { user: User }) {
                 await api("/auth/logout", { method: "POST" });
                 router.replace("/login");
               }}
-              tooltip="ထွက်ရန်"
+              tooltip={t("workspace.signOut")}
             >
               <LogOut />
-              <span>အကောင့်မှ ထွက်ရန်</span>
+              <span>{t("workspace.signOutOfYourAccount")}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

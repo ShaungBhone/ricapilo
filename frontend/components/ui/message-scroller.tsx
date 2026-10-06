@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import {
   MessageScroller as MessageScrollerPrimitive,
@@ -91,6 +92,7 @@ function MessageScrollerButton({
   ...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Button> &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
+  const t = useTranslations("shared");
   return (
     <MessageScrollerPrimitive.Button
       data-slot="message-scroller-button"
@@ -109,7 +111,7 @@ function MessageScrollerButton({
         <>
           <ArrowDownIcon />
           <span className="sr-only">
-            {direction === "end" ? "Scroll to end" : "Scroll to start"}
+            {direction === "end" ? t("scrollToEnd") : t("scrollToStart")}
           </span>
         </>
       )}

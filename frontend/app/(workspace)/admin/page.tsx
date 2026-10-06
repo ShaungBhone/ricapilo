@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import { api, json } from "@/lib/api";
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
@@ -7,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/feedback";
 export default function Admin() {
+  const t = useTranslations();
+
   const [key, setKey] = useState("");
   const [disabled, setDisabled] = useState("");
   const [message, setMessage] = useState("");
@@ -18,15 +22,17 @@ export default function Admin() {
         setDisabled(r.disabled_models.join("\n"));
         setMessage(
           r.youtube_configured
-            ? "YouTube ချိတ်ဆက်ပြီးပါပြီ။"
-            : "YouTube key ထည့်ရန် လိုပါသည်။",
+            ? "administration.youtubeConnected"
+            : "administration.aYoutubeKeyIsRequired",
         );
       })
       .catch((e) => setMessage(e.message));
   }, []);
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">စီမံခန့်ခွဲမှု</h1>
+      <h1 className="text-2xl font-semibold">
+        {t("workspace.administration")}
+      </h1>
       <Feedback message={message} />
       {allowed && (
         <form
@@ -44,7 +50,7 @@ export default function Admin() {
                 }),
               });
               setKey("");
-              setMessage("သိမ်းပြီးပါပြီ။");
+              setMessage(t("administration.saved"));
             } catch (e) {
               setMessage((e as Error).message);
             }
@@ -52,7 +58,9 @@ export default function Admin() {
         >
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="youtube">YouTube Data API key</FieldLabel>
+              <FieldLabel htmlFor="youtube">
+                {t("administration.youtubeDataApiKey")}
+              </FieldLabel>
               <Input
                 id="youtube"
                 type="password"
@@ -63,7 +71,7 @@ export default function Admin() {
             </Field>
             <Field>
               <FieldLabel htmlFor="disabled">
-                ပိတ်ထားမည့် model IDs (တစ်ကြောင်းစီ)
+                {t("administration.disabledModelIdsOnePerLine")}
               </FieldLabel>
               <Textarea
                 id="disabled"
@@ -72,7 +80,7 @@ export default function Admin() {
                 onChange={(e) => setDisabled(e.target.value)}
               />
             </Field>
-            <Button type="submit">သိမ်းရန်</Button>
+            <Button type="submit">{t("administration.save")}</Button>
           </FieldGroup>
         </form>
       )}

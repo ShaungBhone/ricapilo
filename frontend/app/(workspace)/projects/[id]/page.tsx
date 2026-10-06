@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { api, json, Project, API } from "@/lib/api";
@@ -18,6 +20,8 @@ export default function Detail({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const t = useTranslations();
+
   const { id } = use(params);
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
@@ -81,21 +85,28 @@ export default function Detail({
     busy ||
     (!!project &&
       ["queued", "processing", "rendering"].includes(project.status));
-  if (!project) return <Feedback message={message || "ခဏစောင့်ပါ…"} />;
+  if (!project)
+    return <Feedback message={message || t("authentication.pleaseWait")} />;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl leading-relaxed font-semibold">
           {project.title}
         </h1>
-        <Badge variant="secondary">{project.status}</Badge>
+        <Badge variant="secondary">
+          {t.has(`projects.${project.status}`)
+            ? t(`projects.${project.status}`)
+            : project.status}
+        </Badge>
       </div>
       <Feedback message={message || project.error || ""} />
       <div className="grid gap-8 lg:grid-cols-2">
         <section className="flex flex-col gap-5">
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="transcript">မူရင်း စာသား</FieldLabel>
+              <FieldLabel htmlFor="transcript">
+                {t("projects.sourceTranscript")}
+              </FieldLabel>
               <Textarea
                 id="transcript"
                 rows={6}
@@ -114,16 +125,18 @@ export default function Detail({
                     body: json({ transcript }),
                   });
                   await refresh();
-                  setMessage("မူရင်းစာသား သိမ်းပြီးပါပြီ။");
+                  setMessage(t("projects.sourceTranscriptSaved"));
                 } catch (e) {
                   setMessage((e as Error).message);
                 }
               }}
             >
-              မူရင်းစာသား သိမ်းရန်
+              {t("projects.saveTranscript")}
             </Button>
             <Field>
-              <FieldLabel htmlFor="file">ရင်းမြစ်ဖိုင် ထည့်ရန်</FieldLabel>
+              <FieldLabel htmlFor="file">
+                {t("projects.uploadSourceFile")}
+              </FieldLabel>
               <Input
                 id="file"
                 type="file"
@@ -141,7 +154,7 @@ export default function Detail({
                       body: f,
                     });
                     await refresh();
-                    setMessage("ဖိုင်တင်ပြီးပါပြီ။");
+                    setMessage(t("projects.fileUploaded"));
                   } catch (e) {
                     setMessage((e as Error).message);
                   } finally {
@@ -152,10 +165,12 @@ export default function Detail({
             </Field>
           </FieldGroup>
           <Button disabled={processing} onClick={() => void generate("script")}>
-            ၁ · မြန်မာအနှစ်ချုပ် ဖန်တီးရန်
+            {t("projects.1GenerateBurmeseRecap")}
           </Button>
           <Field>
-            <FieldLabel htmlFor="script">မြန်မာဇာတ်ညွှန်း</FieldLabel>
+            <FieldLabel htmlFor="script">
+              {t("projects.burmeseScript")}
+            </FieldLabel>
             <Textarea
               id="script"
               rows={12}
@@ -173,37 +188,37 @@ export default function Detail({
                   method: "PATCH",
                   body: json({ script }),
                 });
-                setMessage("ဇာတ်ညွှန်း သိမ်းပြီးပါပြီ။");
+                setMessage(t("projects.scriptSaved"));
                 await refresh();
               } catch (e) {
                 setMessage((e as Error).message);
               }
             }}
           >
-            ဇာတ်ညွှန်း သိမ်းရန်
+            {t("projects.saveScript")}
           </Button>
           <Button
             disabled={processing || !script.trim()}
             onClick={() => void generate("audio")}
           >
-            ၂ · အသံဖန်တီးရန်
+            {t("projects.2GenerateNarration")}
           </Button>
           <Button
             disabled={processing || !project.captions?.length}
             onClick={() => void generate("video")}
           >
-            ၃ · ဗီဒီယို ထုတ်ရန်
+            {t("projects.3RenderVideo")}
           </Button>
           <p className="text-xs leading-6 text-muted-foreground">
-            AI တောင်းဆိုမှုတိုင်းအတွက် သင့် OpenRouter အကောင့်မှ အသုံးစရိတ်
-            ကျသင့်ပါမည်။ ဗီဒီယိုရှာဖွေမှုသည် ရင်းမြစ်ဖိုင် ရရှိမည်ဟု
-            အာမခံမထားပါ။
+            {t("projects.eachAiRequestIsBilledToYourOpenrouter")}
           </p>
         </section>
         <section className="flex flex-col gap-5">
-          <h2 className="text-lg font-semibold">အစမ်းကြည့်ရန်</h2>
+          <h2 className="text-lg font-semibold">{t("projects.preview")}</h2>
           <Field>
-            <FieldLabel htmlFor="caption-style">စာတန်းပုံစံ</FieldLabel>
+            <FieldLabel htmlFor="caption-style">
+              {t("projects.captionStyle")}
+            </FieldLabel>
             <NativeSelect
               id="caption-style"
               disabled={processing}
@@ -221,10 +236,10 @@ export default function Detail({
               }}
             >
               <NativeSelectOption value="clean-bottom">
-                အောက်ခြေ ရိုးရိုး
+                {t("projects.cleanBottom")}
               </NativeSelectOption>
               <NativeSelectOption value="boxed-minimal">
-                နောက်ခံအကွက်ဖြင့်
+                {t("projects.boxedMinimal")}
               </NativeSelectOption>
             </NativeSelect>
           </Field>
@@ -243,7 +258,7 @@ export default function Detail({
             />
           ) : (
             <div className="flex aspect-video items-center justify-center rounded-xl bg-muted p-8 text-center text-muted-foreground">
-              အသံဖန်တီးပြီးနောက် ဗီဒီယိုအစမ်းကို ကြည့်နိုင်ပါမည်။
+              {t("projects.generateNarrationToPreviewYourVideo")}
             </div>
           )}
           {project.captions?.length && (
@@ -259,7 +274,7 @@ export default function Detail({
                 href={`${API}/projects/${id}/download/script`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
-                ဇာတ်ညွှန်း ဒေါင်းလုပ်
+                {t("projects.downloadScript")}
               </a>
             )}
             {project.captions?.length && (
@@ -268,7 +283,7 @@ export default function Detail({
                 href={`${API}/projects/${id}/download/audio`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
-                MP3 ဒေါင်းလုပ်
+                {t("projects.downloadMp3")}
               </a>
             )}
             {project.status === "ready" && (
@@ -277,7 +292,7 @@ export default function Detail({
                 href={`${API}/projects/${id}/download/video`}
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
-                MP4 ဒေါင်းလုပ်
+                {t("projects.downloadMp4")}
               </a>
             )}
           </div>
@@ -285,7 +300,7 @@ export default function Detail({
             variant="ghost"
             disabled={processing}
             onClick={async () => {
-              if (!confirm("ပရောဂျက်နှင့် ဖိုင်များကို ဖျက်မလား။")) return;
+              if (!confirm(t("projects.deleteThisProjectAndItsFiles"))) return;
               try {
                 await api(`/projects/${id}`, { method: "DELETE" });
                 router.push("/projects");
@@ -294,7 +309,7 @@ export default function Detail({
               }
             }}
           >
-            ပရောဂျက် ဖျက်ရန်
+            {t("projects.deleteProject")}
           </Button>
         </section>
       </div>

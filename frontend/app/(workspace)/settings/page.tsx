@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import { api, json } from "@/lib/api";
 import {
@@ -20,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Feedback } from "@/components/feedback";
 export default function Settings() {
+  const t = useTranslations();
+
   const [configured, setConfigured] = useState(false);
   const [secret, setSecret] = useState("");
   const [message, setMessage] = useState("");
@@ -38,7 +42,7 @@ export default function Settings() {
       await api("/keys", { method: "PUT", body: json({ secret }) });
       setSecret("");
       setConfigured(true);
-      setMessage("API key သိမ်းပြီးပါပြီ။");
+      setMessage(t("settings.apiKeySaved"));
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
@@ -47,13 +51,13 @@ export default function Settings() {
   }
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">ဆက်တင်များ</h1>
+      <h1 className="text-2xl font-semibold">{t("workspace.settings")}</h1>
       <Feedback message={message} />
       <Card>
         <CardHeader>
           <CardTitle>OpenRouter</CardTitle>
           <CardDescription>
-            သင့်ကိုယ်ပိုင် key ဖြင့် စာ၊ အသံနှင့် အနှစ်ချုပ် ဖန်တီးပါ။
+            {t("settings.createTextAudioAndRecapsWithYourOwn")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -61,9 +65,11 @@ export default function Settings() {
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="key">
-                  API key{" "}
+                  {t("settings.apiKey")}{" "}
                   <Badge variant="secondary">
-                    {configured ? "ချိတ်ဆက်ပြီး" : "မချိတ်ဆက်ရသေး"}
+                    {configured
+                      ? t("settings.connected")
+                      : t("settings.notConnected")}
                   </Badge>
                 </FieldLabel>
                 <Input
@@ -77,8 +83,7 @@ export default function Settings() {
                   placeholder="sk-or-…"
                 />
                 <FieldDescription>
-                  Key ကို encrypt လုပ်၍ သိမ်းပါမည်။ သိမ်းပြီးနောက် ပြန်မပြပါ။ AI
-                  အသုံးစရိတ်သည် သင့် OpenRouter အကောင့်မှ ကျသင့်ပါမည်။
+                  {t("settings.yourKeyIsStoredEncryptedAndCannotBe")}
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -86,13 +91,13 @@ export default function Settings() {
         </CardContent>
         <CardFooter className="gap-3">
           <Button disabled={busy} type="submit" form="key-form">
-            Key သိမ်းရန်
+            {t("settings.saveKey")}
           </Button>
           {configured && (
             <Button
               variant="outline"
               onClick={async () => {
-                if (!confirm("API key ကို ဖယ်ရှားမလား။")) return;
+                if (!confirm(t("settings.removeTheApiKey"))) return;
                 try {
                   await api("/keys", { method: "DELETE" });
                   setConfigured(false);
@@ -101,7 +106,7 @@ export default function Settings() {
                 }
               }}
             >
-              Key ဖယ်ရှားရန်
+              {t("settings.removeKey")}
             </Button>
           )}
         </CardFooter>

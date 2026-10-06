@@ -27,7 +27,7 @@ Route::prefix('api/v1')->group(function (): void {
                 $r->user()->sendEmailVerificationNotification();
             }
 
-            return ['message' => 'Verification email sent.'];
+            return ['message' => __('app.verification_email_sent')];
         })->middleware('throttle:3,1');
         Route::get('/keys', [WorkspaceController::class, 'keys']);
         Route::put('/keys', [WorkspaceController::class, 'saveKey']);

@@ -1,3 +1,8 @@
+"use client";
+import { localizeMessage } from "@/i18n/messages";
+import { resolveLocale } from "@/i18n/locales";
+import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   Empty,
@@ -6,10 +11,15 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 export function Feedback({ message }: { message: string }) {
+  const locale = resolveLocale(useLocale());
+  const t = useTranslations();
+
   return message ? (
     <Alert role="status">
-      <AlertTitle>အသိပေးချက်</AlertTitle>
-      <AlertDescription>{message}</AlertDescription>
+      <AlertTitle>{t("shared.notice")}</AlertTitle>
+      <AlertDescription className="whitespace-pre-line">
+        {localizeMessage(message, locale)}
+      </AlertDescription>
     </Alert>
   ) : null;
 }

@@ -34,7 +34,7 @@ class AuthController extends Controller
     {
         $data = $r->validate(['email' => 'required|email', 'password' => 'required|string']);
         if (! Auth::attempt($data)) {
-            throw ValidationException::withMessages(['email' => 'Email or password is incorrect.']);
+            throw ValidationException::withMessages(['email' => __('app.email_or_password_is_incorrect')]);
         }
 
         $r->session()->regenerate();
@@ -48,7 +48,7 @@ class AuthController extends Controller
         $r->session()->invalidate();
         $r->session()->regenerateToken();
 
-        return response()->json(['message' => 'Signed out']);
+        return response()->json(['message' => __('app.signed_out')]);
     }
 
     public function forgot(Request $r): JsonResponse
@@ -56,7 +56,7 @@ class AuthController extends Controller
         $r->validate(['email' => 'required|email']);
         Password::sendResetLink($r->only('email'));
 
-        return response()->json(['message' => 'If that email is registered, a reset link has been sent.']);
+        return response()->json(['message' => __('app.if_that_email_is_registered_a_reset_link_has_been_sent')]);
     }
 
     public function reset(Request $r): JsonResponse
@@ -70,6 +70,6 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['email' => __($status)]);
         }
 
-        return response()->json(['message' => 'Password reset. You can sign in now.']);
+        return response()->json(['message' => __('app.password_reset_you_can_sign_in_now')]);
     }
 }

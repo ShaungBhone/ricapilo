@@ -28,7 +28,7 @@ class WorkspaceController extends Controller
         $v = $r->validate(['secret' => 'required|string|min:15|max:500']);
         Credential::updateOrCreate(['user_id' => $r->user()->id, 'provider' => 'openrouter'], $v);
 
-        return response()->json(['message' => 'Key saved securely.']);
+        return response()->json(['message' => __('app.key_saved_securely')]);
     }
 
     public function deleteKey(Request $r): mixed
@@ -102,7 +102,7 @@ class WorkspaceController extends Controller
     {
         $v = $r->validate(['title' => 'required|string|max:255', 'assistant_id' => ['required', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)], 'source' => 'required|in:upload,youtube,dailymotion', 'source_id' => 'nullable|string|max:80|regex:/^[a-zA-Z0-9_-]+$/', 'transcript' => 'nullable|string|max:100000', 'format' => 'required|in:vertical,landscape', 'target_seconds' => 'required|integer|between:15,600']);
         if ($v['source'] !== 'upload' && empty($v['source_id'])) {
-            throw ValidationException::withMessages(['source_id' => 'Choose a video first.']);
+            throw ValidationException::withMessages(['source_id' => __('app.choose_a_video_first')]);
         }
 
         return response()->json(Project::create(['user_id' => $r->user()->id, ...$v]), 201);
@@ -114,7 +114,7 @@ class WorkspaceController extends Controller
         $v = $r->validate(['script' => 'sometimes|required|string|max:20000', 'transcript' => 'sometimes|required|string|max:100000', 'format' => 'sometimes|in:vertical,landscape', 'caption_style' => 'sometimes|in:clean-bottom,boxed-minimal', 'assistant_id' => ['sometimes', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)]]);
         DB::transaction(function () use ($p, $v): void {
             $locked = Project::lockForUpdate()->findOrFail($p->id);
-            abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, 'Wait for the current generation to finish.');
+            abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, __('app.wait_for_the_current_generation_to_finish'));
             $locked->fill($v);
             if (isset($v['script'])) {
                 $locked->audio_path = null;
@@ -162,13 +162,13 @@ class WorkspaceController extends Controller
         $ai->client($r->user());
         DB::transaction(function () use ($p, $v): void {
             $locked = Project::lockForUpdate()->findOrFail($p->id);
-            abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, 'Generation is already running.');
+            abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, __('app.generation_is_already_running'));
             if ($v['stage'] === 'audio') {
-                abort_unless($locked->script, 422, 'Generate and review the script first.');
+                abort_unless($locked->script, 422, __('app.generate_and_review_the_script_first'));
             }
 
             if ($v['stage'] === 'video') {
-                abort_unless($locked->audio_path, 422, 'Generate narration first.');
+                abort_unless($locked->audio_path, 422, __('app.generate_narration_first'));
             }
 
             if ($v['stage'] === 'script') {
@@ -237,7 +237,7 @@ class WorkspaceController extends Controller
         }
 
         if (! trim($text)) {
-            throw ValidationException::withMessages(['text' => 'Speak or type a message.']);
+            throw ValidationException::withMessages(['text' => __('app.speak_or_type_a_message')]);
         }
 
         $c = empty($v['conversation_id']) ? new Conversation(['user_id' => $r->user()->id, 'assistant_id' => $a->id, 'title' => mb_substr($text, 0, 80), 'messages' => []]) : Conversation::where('user_id', $r->user()->id)->findOrFail($v['conversation_id']);

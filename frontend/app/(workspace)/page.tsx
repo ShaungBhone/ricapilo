@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -35,6 +37,8 @@ import { Blank, Feedback } from "@/components/feedback";
 import { useMicrophone } from "@/hooks/use-microphone";
 import { api, json, Assistant, Video } from "@/lib/api";
 export default function Home() {
+  const t = useTranslations();
+
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [platform, setPlatform] = useState("all");
@@ -54,7 +58,7 @@ export default function Home() {
   }, []);
   const mic = useMicrophone(async (blob) => {
     if (!assistant) {
-      setMessage("လက်ထောက်ကို အရင်ရွေးချယ်ပါ။");
+      setMessage(t("workspace.chooseAnAssistantFirst"));
       return;
     }
     setBusy(true);
@@ -90,7 +94,7 @@ export default function Home() {
       );
       setVideos(r.videos);
       setSearched(true);
-      setMessage(r.warnings.join(" "));
+      setMessage(r.warnings.join("\n"));
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
@@ -99,7 +103,7 @@ export default function Home() {
   }
   async function select(v: Video) {
     if (!assistant) {
-      setMessage("ပရောဂျက်အတွက် လက်ထောက်တစ်ခု ရွေးချယ်ပါ။");
+      setMessage(t("workspace.chooseAnAssistantForThisProject"));
       return;
     }
     setBusy(true);
@@ -126,14 +130,14 @@ export default function Home() {
     <div className="flex flex-col gap-8">
       <section className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 py-10 md:py-16">
         <Badge variant="secondary">
-          <AudioLines /> သင့်ကိုယ်ပိုင် AI ဖန်တီးမှုနေရာ
+          <AudioLines /> {t("workspace.yourPersonalAiWorkspace")}
         </Badge>
         <div className="flex flex-col gap-4 text-center">
           <h1 className="text-3xl leading-relaxed font-semibold tracking-tight md:text-5xl">
-            ဘာဇာတ်လမ်း ဖန်တီးချင်ပါသလဲ။
+            {t("workspace.whatStoryWouldYouLikeToCreate")}
           </h1>
           <p className="leading-8 text-muted-foreground">
-            ဗီဒီယိုရှာပါ။ မြန်မာအနှစ်ချုပ်ရေးပါ။ သင့်အသံကို ရွေးပါ။
+            {t("workspace.findVideosWriteBurmeseRecapsChooseYourVoice")}
           </p>
         </div>
         <form
@@ -145,8 +149,8 @@ export default function Home() {
         >
           <InputGroup className="rounded-2xl">
             <InputGroupTextarea
-              aria-label="သင့်တောင်းဆိုချက်"
-              placeholder="အာကာသအကြောင်း လူကြိုက်များတဲ့ ဗီဒီယိုတိုတွေ ရှာပေးပါ…"
+              aria-label={t("workspace.yourRequest")}
+              placeholder={t("workspace.findPopularShortVideosAboutSpace")}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className="min-h-32"
@@ -156,14 +160,18 @@ export default function Home() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={mic.active ? "အသံဖမ်းရပ်ရန်" : "အသံဖြင့် ထည့်ရန်"}
+                aria-label={
+                  mic.active
+                    ? t("workspace.stopRecording")
+                    : t("workspace.useVoiceInput")
+                }
                 disabled={busy || !assistant}
                 onClick={() => (mic.active ? mic.stop() : void mic.start())}
               >
                 {mic.active ? <Square /> : <Mic />}
               </Button>
               <NativeSelect
-                aria-label="ဗီဒီယိုရင်းမြစ်"
+                aria-label={t("workspace.videoSource")}
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
               >
@@ -179,7 +187,7 @@ export default function Home() {
                 type="submit"
                 className="ml-auto"
                 size="icon"
-                aria-label="ရှာဖွေရန်"
+                aria-label={t("workspace.search")}
                 disabled={busy || !prompt.trim()}
               >
                 <ArrowUp />
@@ -189,12 +197,12 @@ export default function Home() {
         </form>
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <NativeSelect
-            aria-label="လက်ထောက်ရွေးရန်"
+            aria-label={t("workspace.chooseAssistant")}
             value={assistant}
             onChange={(e) => setAssistant(e.target.value)}
           >
             <NativeSelectOption value="">
-              လက်ထောက် ရွေးချယ်ပါ
+              {t("workspace.chooseAnAssistant")}
             </NativeSelectOption>
             {assistants.map((a) => (
               <NativeSelectOption key={a.id} value={a.id}>
@@ -206,20 +214,21 @@ export default function Home() {
             className={buttonVariants({ variant: "ghost", size: "sm" })}
             href="/projects/new"
           >
-            <Upload data-icon="inline-start" /> ကိုယ်ပိုင်ဖိုင်ဖြင့် စတင်ရန်
+            <Upload data-icon="inline-start" />{" "}
+            {t("workspace.startWithYourOwnFile")}
           </Link>
         </div>
         <Feedback message={message || mic.error} />
         {busy && (
           <p role="status" className="text-sm text-muted-foreground">
-            ခဏစောင့်ပါ…
+            {t("authentication.pleaseWait")}
           </p>
         )}
         <div className="flex flex-wrap justify-center gap-2">
           {[
-            "အာကာသ ဗီဒီယိုတိုများ",
-            "ကိုရီးယား ရုပ်ရှင်နမူနာများ",
-            "သဘာဝအကြောင်း ဗီဒီယိုများ",
+            t("workspace.shortVideosAboutSpace"),
+            t("workspace.koreanMovieTrailers"),
+            t("workspace.natureVideos"),
           ].map((text) => (
             <Button
               key={text}
@@ -235,22 +244,24 @@ export default function Home() {
       </section>
       {!assistants.length && (
         <Blank
-          title="သင့်လက်ထောက်ကို စတင်ဖန်တီးပါ"
-          description="ဆက်တင်တွင် OpenRouter key ထည့်ပြီး လက်ထောက်အတွက် model နှင့် အသံ ရွေးချယ်ပါ။"
+          title={t("workspace.createYourAssistant")}
+          description={t("workspace.addYourOpenrouterKeyInSettingsThenChoose")}
         />
       )}
       {searched && (
         <section className="flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
-              ရှာဖွေတွေ့ရှိသော ဗီဒီယိုများ
+              {t("workspace.searchResults")}
             </h2>
-            <Badge variant="outline">{videos.length} ခု</Badge>
+            <Badge variant="outline">
+              {t("shared.videoCount", { count: videos.length })}
+            </Badge>
           </div>
           {!videos.length && (
             <Blank
-              title="ဗီဒီယို မတွေ့ပါ"
-              description="အခြား စကားလုံးများဖြင့် ထပ်ရှာပါ။"
+              title={t("workspace.noVideosFound")}
+              description={t("workspace.trySearchingWithDifferentWords")}
             />
           )}
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -276,12 +287,14 @@ export default function Home() {
                     />
                   )}
                   <p className="text-sm text-muted-foreground">
-                    {v.creator} · {v.views?.toLocaleString()} views
+                    {v.creator} ·{" "}
+                    {v.views != null &&
+                      t("shared.viewCount", { count: v.views })}
                   </p>
                 </CardContent>
                 <CardFooter className="gap-2">
                   <Button disabled={busy} onClick={() => void select(v)}>
-                    အနှစ်ချုပ် ဖန်တီးရန်
+                    {t("workspace.createRecap")}
                   </Button>
                   <a
                     href={v.url}
@@ -291,7 +304,7 @@ export default function Home() {
                       variant: "ghost",
                       size: "icon",
                     })}
-                    aria-label="မူရင်းဗီဒီယို ကြည့်ရန်"
+                    aria-label={t("workspace.watchOriginalVideo")}
                   >
                     <ArrowUpRight />
                   </a>

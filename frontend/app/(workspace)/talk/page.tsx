@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "next-intl";
+
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square, Send } from "lucide-react";
 import { api, json, Assistant, Conversation } from "@/lib/api";
@@ -13,6 +15,8 @@ import { Feedback } from "@/components/feedback";
 import { Transcript } from "@/components/transcript";
 import { useMicrophone } from "@/hooks/use-microphone";
 export default function Talk() {
+  const t = useTranslations();
+
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [selected, setSelected] = useState("");
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -116,9 +120,13 @@ export default function Talk() {
   }
   return (
     <div className="flex max-w-4xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">တိုက်ရိုက် စကားပြောရန်</h1>
+      <h1 className="text-2xl font-semibold">
+        {t("conversations.liveConversation")}
+      </h1>
       <Field>
-        <FieldLabel htmlFor="assistant">လက်ထောက်</FieldLabel>
+        <FieldLabel htmlFor="assistant">
+          {t("conversations.assistant")}
+        </FieldLabel>
         <NativeSelect
           id="assistant"
           value={selected}
@@ -128,7 +136,9 @@ export default function Talk() {
             setConversation(null);
           }}
         >
-          <NativeSelectOption value="">ရွေးချယ်ပါ</NativeSelectOption>
+          <NativeSelectOption value="">
+            {t("conversations.choose")}
+          </NativeSelectOption>
           {assistants.map((a) => (
             <NativeSelectOption key={a.id} value={a.id}>
               {a.name}
@@ -154,7 +164,9 @@ export default function Talk() {
           ) : (
             <Mic data-icon="inline-start" />
           )}
-          {continuous ? "စကားဝိုင်း ရပ်ရန်" : "မိုက်ခရိုဖုန်းဖြင့် စတင်ရန်"}
+          {continuous
+            ? t("conversations.stopConversation")
+            : t("conversations.startMicrophone")}
         </Button>
         <Button
           variant="outline"
@@ -165,14 +177,14 @@ export default function Talk() {
             setBusy(false);
           }}
         >
-          အသံ / တုံ့ပြန်မှု ရပ်ရန်
+          {t("conversations.stopAudioResponse")}
         </Button>
         <p role="status" className="text-sm text-muted-foreground">
           {busy
-            ? "စဉ်းစားနေပါသည်…"
+            ? t("conversations.thinking")
             : mic.active
-              ? "နားထောင်နေပါသည်…"
-              : "အဆင်သင့်"}
+              ? t("conversations.listening")
+              : t("conversations.ready")}
         </p>
       </div>
       <Transcript
@@ -191,7 +203,9 @@ export default function Talk() {
       >
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="message">စာဖြင့် ပြောရန်</FieldLabel>
+            <FieldLabel htmlFor="message">
+              {t("conversations.typeAMessage")}
+            </FieldLabel>
             <Input
               id="message"
               value={text}
@@ -201,14 +215,12 @@ export default function Talk() {
           </Field>
           <Button disabled={busy || !text.trim() || !selected} type="submit">
             <Send data-icon="inline-start" />
-            ပို့ရန်
+            {t("conversations.send")}
           </Button>
         </FieldGroup>
       </form>
       <p className="text-xs leading-6 text-muted-foreground">
-        အသံကို စကားတစ်လှည့်စီ ဖမ်းယူပြီး တုံ့ပြန်ပါမည်။ မိုက်ခရိုဖုန်းသည် HTTPS
-        သို့မဟုတ် localhost တွင် အလုပ်လုပ်ပါသည်။ နားကြပ်သုံးခြင်းက အသံပြန်ဝင်မှု
-        လျော့စေပါသည်။
+        {t("conversations.audioIsRecordedAndAnsweredOneTurnAt")}
       </p>
     </div>
   );
