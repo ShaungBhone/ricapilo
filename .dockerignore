@@ -1,0 +1,11 @@
+**/node_modules
+**/vendor
+**/.next
+**/.git
+**/.env
+**/.env.local
+**/*.sqlite
+**/storage/logs/*
+**/storage/framework/views/*
+**/storage/framework/cache/*
+**/storage/app/private/*

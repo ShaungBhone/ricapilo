@@ -1,0 +1,108 @@
+name: recap
+x-app-env: &app-env
+  APP_NAME: Recap
+  APP_ENV: local
+  APP_DEBUG: "false"
+  APP_KEY: ${APP_KEY:?Run scripts/setup.sh first}
+  APP_URL: ${FRONTEND_URL:-http://localhost:3000}/api/backend
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  DB_CONNECTION: pgsql
+  DB_HOST: database
+  DB_PORT: 5432
+  DB_DATABASE: recap
+  DB_USERNAME: recap
+  DB_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/setup.sh first}
+  SESSION_DRIVER: database
+  CACHE_STORE: redis
+  REDIS_HOST: redis
+  REDIS_CLIENT: phpredis
+  QUEUE_CONNECTION: database
+  DB_QUEUE_RETRY_AFTER: 1900
+  MAIL_MAILER: smtp
+  MAIL_HOST: mailpit
+  MAIL_PORT: 1025
+  MAIL_FROM_ADDRESS: hello@recap.local
+  RENDERER_URL: http://renderer:4000
+  RENDERER_TOKEN: ${RENDERER_TOKEN:?Run scripts/setup.sh first}
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: recap
+      POSTGRES_USER: recap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [database:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U recap]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  init:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment: *app-env
+    command: [php, artisan, migrate, --force]
+    volumes: [media:/var/www/html/storage/app/private]
+    depends_on:
+      database: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment: *app-env
+    volumes: [media:/var/www/html/storage/app/private]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost/up]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment: *app-env
+    user: www-data
+    command: [php, artisan, queue:work, --sleep=2, --tries=1, --timeout=1800]
+    volumes: [media:/var/www/html/storage/app/private]
+    depends_on:
+      init: {condition: service_completed_successfully}
+      renderer: {condition: service_healthy}
+  renderer:
+    build:
+      context: .
+      dockerfile: docker/renderer.Dockerfile
+    environment:
+      MEDIA_ROOT: /media
+      RENDERER_TOKEN: ${RENDERER_TOKEN}
+    volumes: [media:/media]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        API_INTERNAL_URL: http://api
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      api: {condition: service_healthy}
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["127.0.0.1:8025:8025"]
+volumes:
+  database:
+  media:

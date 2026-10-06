@@ -1,0 +1,12 @@
+**/node_modules/
+**/vendor/
+**/.next/
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.sqlite
+**/*.sqlite-*
+**/*.tsbuildinfo
+.DS_Store
+
+!**/.env.example
