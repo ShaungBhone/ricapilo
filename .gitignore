@@ -8,5 +8,6 @@
 **/*.sqlite-*
 **/*.tsbuildinfo
 .DS_Store
+.agents/skills/
 
 !**/.env.example

@@ -20,7 +20,10 @@ class AuthController extends Controller
     {
         $data = $r->validate(['name' => 'required|string|max:100', 'email' => 'required|email|max:255|unique:users', 'password' => ['required', 'confirmed', PasswordRule::min(10)->letters()->numbers()]]);
         $user = User::create($data);
-        event(new Registered($user));
+        if (config('recap.email_verification_required')) {
+            event(new Registered($user));
+        }
+
         Auth::login($user);
         $r->session()->regenerate();
 

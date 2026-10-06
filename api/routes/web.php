@@ -15,7 +15,7 @@ Route::prefix('api/v1')->group(function (): void {
         Route::post('/auth/reset', [AuthController::class, 'reset']);
     });
     Route::middleware('auth')->group(function (): void {
-        Route::get('/auth/me', fn (Request $r) => response()->json($r->user()));
+        Route::get('/auth/me', fn (Request $r) => response()->json([...$r->user()->toArray(), 'email_verification_required' => (bool) config('recap.email_verification_required')]));
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $r) {
             $r->fulfill();

@@ -18,13 +18,21 @@ The setup script generates a private `.env` containing a unique application key,
 - App: http://localhost:3000
 - Development email inbox: http://localhost:8025
 
-Register an account in the app. Open its verification email in Mailpit and follow the link in the same browser where you registered. Add your OpenRouter API key in Settings. Create an assistant with a text model, transcription model, speech model, and a supported voice ID. The model catalog is discovered dynamically; there are no hardcoded voice names.
+Register an account in the app. Email verification is optional for now. To require it later, set `EMAIL_VERIFICATION_REQUIRED=true` in the root `.env` (or `api/.env` for local development) and restart the API and worker with the updated configuration. When required, open the verification email in Mailpit and follow its link in the same browser where you registered. Add your OpenRouter API key in Settings. Create an assistant with a text model, transcription model, speech model, and a supported voice ID. The model catalog is discovered dynamically; there are no hardcoded voice names.
 
 The local mail inbox is for development. Configure a real SMTP service for deployment.
 
+The default Docker frontend runs a production build. For live frontend updates while editing code, start it with the development override:
+
+```sh
+docker compose -f compose.yaml -f compose.dev.yaml up --build -d frontend
+```
+
+This mounts `frontend/` and runs Next.js development mode with file polling for Docker. Dependencies and build output stay in Docker volumes. To return to the production build, run `docker compose up --build -d frontend`.
+
 ## Configure discovery
 
-Dailymotion discovery uses its public video API. YouTube requires a YouTube Data API key managed by the administrator. Create and verify an account, then promote it:
+Dailymotion discovery uses its public video API. YouTube requires a YouTube Data API key managed by the administrator. Create an account, then promote it (verify it first only when `EMAIL_VERIFICATION_REQUIRED=true`):
 
 ```sh
 docker compose exec api php artisan recap:admin you@example.com

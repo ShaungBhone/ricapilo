@@ -6,6 +6,7 @@ x-app-env: &app-env
   APP_KEY: ${APP_KEY:?Run scripts/setup.sh first}
   APP_URL: ${FRONTEND_URL:-http://localhost:3000}/api/backend
   FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  EMAIL_VERIFICATION_REQUIRED: ${EMAIL_VERIFICATION_REQUIRED:-false}
   DB_CONNECTION: pgsql
   DB_HOST: database
   DB_PORT: 5432

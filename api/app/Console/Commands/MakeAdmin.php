@@ -9,13 +9,19 @@ class MakeAdmin extends Command
 {
     protected $signature = 'recap:admin {email}';
 
-    protected $description = 'Promote an existing verified user to administrator';
+    protected $description = 'Promote an existing user to administrator';
 
     public function handle(): int
     {
         $u = User::where('email', $this->argument('email'))->first();
-        if (! $u || ! $u->hasVerifiedEmail()) {
-            $this->error('Create and verify this account first.');
+        if (! $u) {
+            $this->error('Create this account first.');
+
+            return self::FAILURE;
+        }
+
+        if (config('recap.email_verification_required') && ! $u->hasVerifiedEmail()) {
+            $this->error('Verify this account first.');
 
             return self::FAILURE;
         }

@@ -1,6 +1,8 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TriangleAlert } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   SidebarProvider,
   SidebarInset,
@@ -55,17 +57,25 @@ export function Workspace({ children }: { children: React.ReactNode }) {
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 md:px-6">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
-              <Separator orientation="vertical" className="h-4" />
+              <Separator
+                orientation="vertical"
+                className="h-4 data-vertical:self-center"
+              />
               <span className="text-sm">မြန်မာ AI စတူဒီယို</span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              ကိုယ်ပိုင် API key ဖြင့်
-            </span>
           </header>
           <div className="mx-auto w-full max-w-6xl p-4 md:p-8">
             {!user.email_verified_at && (
               <div className="mb-6 flex flex-col gap-3">
-                <Feedback message="AI မသုံးမီ သင့်အီးမေးလ်ကို အတည်ပြုပါ။" />
+                <Alert variant="warning">
+                  <TriangleAlert aria-hidden="true" />
+                  <AlertTitle>အသိပေးချက်</AlertTitle>
+                  <AlertDescription>
+                    {user.email_verification_required
+                      ? "AI မသုံးမီ သင့်အီးမေးလ်ကို အတည်ပြုပါ။"
+                      : "သင့်အီးမေးလ်ကို အတည်ပြုနိုင်ပါသည်။ အတည်မပြုဘဲလည်း AI ကို အသုံးပြုနိုင်ပါသည်။"}
+                  </AlertDescription>
+                </Alert>
                 <Button
                   variant="outline"
                   className="w-fit"

@@ -37,6 +37,7 @@ class WorkspaceTest extends TestCase
 
     public function test_public_signup_creates_an_unverified_non_admin_user_and_sends_verification(): void
     {
+        config(['recap.email_verification_required' => true]);
         Notification::fake();
         $this->postJson('/api/v1/auth/register', ['name' => 'New user', 'email' => 'new@example.com', 'password' => 'GoodPassword123', 'password_confirmation' => 'GoodPassword123', 'is_admin' => true])->assertCreated()->assertJsonPath('email_verified_at', null)->assertJsonMissingPath('password');
         $u = User::first();
@@ -44,6 +45,35 @@ class WorkspaceTest extends TestCase
         Notification::assertSentTo($u, VerifyEmail::class);
         $this->getJson('/api/v1/auth/me')->assertOk();
         $this->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'all'])->assertForbidden();
+    }
+
+    public function test_signup_and_discovery_work_without_email_verification_when_optional(): void
+    {
+        config(['recap.email_verification_required' => false]);
+        Notification::fake();
+        Http::fake(['api.dailymotion.com/*' => Http::response(['list' => []])]);
+        $this->postJson('/api/v1/auth/register', ['name' => 'New user', 'email' => 'new@example.com', 'password' => 'GoodPassword123', 'password_confirmation' => 'GoodPassword123'])->assertCreated()->assertJsonPath('email_verified_at', null);
+        Notification::assertNothingSent();
+        $this->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('email_verification_required', false);
+        $this->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'dailymotion'])->assertOk();
+    }
+
+    public function test_unverified_user_can_be_promoted_when_email_verification_is_optional(): void
+    {
+        config(['recap.email_verification_required' => false]);
+        $u = User::factory()->unverified()->create();
+        $this->artisan('recap:admin', ['email' => $u->email])->expectsOutput('Administrator access granted.')->assertSuccessful();
+        $this->assertTrue((bool) $u->fresh()->is_admin);
+        $this->assertNull($u->fresh()->email_verified_at);
+    }
+
+    public function test_unverified_user_cannot_be_promoted_when_email_verification_is_required(): void
+    {
+        config(['recap.email_verification_required' => true]);
+        $u = User::factory()->unverified()->create();
+        $this->artisan('recap:admin', ['email' => $u->email])->expectsOutput('Verify this account first.')->assertFailed();
+        $this->assertFalse((bool) $u->fresh()->is_admin);
+        $this->actingAs($u)->getJson('/api/v1/auth/me')->assertJsonPath('email_verification_required', true);
     }
 
     public function test_login_logout_and_invalid_password(): void
