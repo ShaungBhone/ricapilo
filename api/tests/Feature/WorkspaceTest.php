@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Media;
 use App\Services\OpenRouter;
+use App\Services\OpenRouterAgent;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\URL;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\TestCase;
 
 class WorkspaceTest extends TestCase
@@ -171,7 +173,7 @@ class WorkspaceTest extends TestCase
     public function test_script_job_uses_source_and_persists_burmese_result(): void
     {
         $this->catalog();
-        Http::fake(['*/chat/completions' => Http::response(['choices' => [['message' => ['content' => 'မြန်မာ အနှစ်ချုပ်']]], 'usage' => ['cost' => 0.01]]), '*/models*' => Http::response(['data' => [['id' => 'test/chat', 'name' => 'Chat']]])]);
+        OpenRouterAgent::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
         $u = User::factory()->create();
         Credential::create(['user_id' => $u->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $a = Assistant::factory()->create(['user_id' => $u->id]);
@@ -179,7 +181,7 @@ class WorkspaceTest extends TestCase
         (new ProcessProject($p->id, 'script'))->handle(app(OpenRouter::class), app(Media::class));
         $this->assertSame('မြန်မာ အနှစ်ချုပ်', $p->fresh()->script);
         $this->assertSame('script_ready', $p->fresh()->status);
-        Http::assertSent(fn ($request) => str_contains($request->url(), 'chat/completions') && str_contains($request['messages'][1]['content'], $p->transcript));
+        OpenRouterAgent::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, $p->transcript));
     }
 
     public function test_discovery_normalizes_dailymotion_results_and_reports_missing_youtube_key(): void
@@ -193,7 +195,7 @@ class WorkspaceTest extends TestCase
     public function test_text_talk_persists_history_without_exposing_credentials(): void
     {
         $this->catalog();
-        Http::fake(['*/chat/completions' => Http::response(['choices' => [['message' => ['content' => 'မင်္ဂလာပါ']]]]), '*/models*' => Http::response(['data' => [['id' => 'test/chat', 'name' => 'Chat']]])]);
+        OpenRouterAgent::fake(['မင်္ဂလာပါ'])->preventStrayPrompts();
         $u = User::factory()->create();
         Credential::create(['user_id' => $u->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $a = Assistant::factory()->create(['user_id' => $u->id]);
