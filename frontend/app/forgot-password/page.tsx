@@ -1,6 +1,6 @@
-import Link from "next/link"
-import { AudioLines } from "lucide-react"
-import { LoginForm } from "@/components/login-form"
+import Link from "next/link";
+import { AudioLines } from "lucide-react";
+import { LoginForm } from "@/components/login-form";
 export default function Page() {
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-8 bg-muted/40 p-6">
@@ -14,5 +14,5 @@ export default function Page() {
         သင့်ကိုယ်ပိုင် AI · မြန်မာဇာတ်လမ်းများ
       </p>
     </main>
-  )
+  );
 }

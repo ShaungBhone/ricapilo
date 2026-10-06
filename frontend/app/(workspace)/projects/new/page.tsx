@@ -1,32 +1,35 @@
-"use client"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { api, json, Assistant, Project } from "@/lib/api"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+"use client";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { api, json, Assistant, Project } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Field,
   FieldGroup,
   FieldLabel,
   FieldDescription,
-} from "@/components/ui/field"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
-import { Feedback } from "@/components/feedback"
+} from "@/components/ui/field";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Feedback } from "@/components/feedback";
 export default function NewProject() {
-  const router = useRouter()
-  const [assistants, setAssistants] = useState<Assistant[]>([])
-  const [message, setMessage] = useState("")
-  const [busy, setBusy] = useState(false)
+  const router = useRouter();
+  const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     api<Assistant[]>("/assistants")
       .then(setAssistants)
-      .catch((e) => setMessage(e.message))
-  }, [])
+      .catch((e) => setMessage(e.message));
+  }, []);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setBusy(true)
-    const f = new FormData(e.currentTarget)
+    e.preventDefault();
+    setBusy(true);
+    const f = new FormData(e.currentTarget);
     try {
       const p = await api<Project>("/projects", {
         method: "POST",
@@ -38,18 +41,18 @@ export default function NewProject() {
           target_seconds: Number(f.get("seconds")),
           format: f.get("format"),
         }),
-      })
-      const file = f.get("file") as File
+      });
+      const file = f.get("file") as File;
       if (file?.size) {
-        const upload = new FormData()
-        upload.append("file", file)
-        await api(`/projects/${p.id}/upload`, { method: "POST", body: upload })
+        const upload = new FormData();
+        upload.append("file", file);
+        await api(`/projects/${p.id}/upload`, { method: "POST", body: upload });
       }
-      router.push(`/projects/${p.id}`)
+      router.push(`/projects/${p.id}`);
     } catch (e) {
-      setMessage((e as Error).message)
+      setMessage((e as Error).message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   return (
@@ -127,5 +130,5 @@ export default function NewProject() {
         </FieldGroup>
       </form>
     </div>
-  )
+  );
 }

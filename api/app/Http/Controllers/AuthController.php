@@ -33,6 +33,7 @@ class AuthController extends Controller
         if (! Auth::attempt($data)) {
             throw ValidationException::withMessages(['email' => 'Email or password is incorrect.']);
         }
+
         $r->session()->regenerate();
 
         return response()->json($r->user());

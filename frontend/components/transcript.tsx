@@ -1,5 +1,5 @@
-"use client"
-import { Conversation } from "@/lib/api"
+"use client";
+import { Conversation } from "@/lib/api";
 import {
   MessageScrollerProvider,
   MessageScroller,
@@ -7,13 +7,17 @@ import {
   MessageScrollerContent,
   MessageScrollerItem,
   MessageScrollerButton,
-} from "@/components/ui/message-scroller"
-import { Message, MessageContent, MessageHeader } from "@/components/ui/message"
-import { Bubble, BubbleContent } from "@/components/ui/bubble"
+} from "@/components/ui/message-scroller";
+import {
+  Message,
+  MessageContent,
+  MessageHeader,
+} from "@/components/ui/message";
+import { Bubble, BubbleContent } from "@/components/ui/bubble";
 export function Transcript({
   messages,
 }: {
-  messages: Conversation["messages"]
+  messages: Conversation["messages"];
 }) {
   return (
     <div className="h-[420px]">
@@ -50,5 +54,5 @@ export function Transcript({
         </MessageScroller>
       </MessageScrollerProvider>
     </div>
-  )
+  );
 }

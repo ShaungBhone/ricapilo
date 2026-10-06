@@ -1,84 +1,87 @@
-"use client"
-import { useEffect, useState, useRef, use } from "react"
-import { useRouter } from "next/navigation"
-import { api, json, Project, API } from "@/lib/api"
-import { Button, buttonVariants } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
-import { Badge } from "@/components/ui/badge"
-import { Feedback } from "@/components/feedback"
-import { VideoPreview } from "@/components/video-preview"
+"use client";
+import { useEffect, useState, useRef, use } from "react";
+import { useRouter } from "next/navigation";
+import { api, json, Project, API } from "@/lib/api";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Badge } from "@/components/ui/badge";
+import { Feedback } from "@/components/feedback";
+import { VideoPreview } from "@/components/video-preview";
 export default function Detail({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params)
-  const router = useRouter()
-  const [project, setProject] = useState<Project | null>(null)
-  const [script, setScript] = useState("")
-  const [transcript, setTranscript] = useState("")
-  const [message, setMessage] = useState("")
-  const [busy, setBusy] = useState(false)
+  const { id } = use(params);
+  const router = useRouter();
+  const [project, setProject] = useState<Project | null>(null);
+  const [script, setScript] = useState("");
+  const [transcript, setTranscript] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
   const refresh = async () => {
-    const p = await api<Project>(`/projects/${id}`)
-    setProject(p)
-    return p
-  }
-  const savedScript = useRef<string | null>(null)
-  const savedTranscript = useRef<string | null>(null)
+    const p = await api<Project>(`/projects/${id}`);
+    setProject(p);
+    return p;
+  };
+  const savedScript = useRef<string | null>(null);
+  const savedTranscript = useRef<string | null>(null);
   useEffect(() => {
-    let active = true
+    let active = true;
     const poll = () =>
       api<Project>(`/projects/${id}`).then((p) => {
-        if (!active) return
-        setProject(p)
+        if (!active) return;
+        setProject(p);
         if (savedScript.current !== p.script) {
-          savedScript.current = p.script
-          setScript(p.script || "")
+          savedScript.current = p.script;
+          setScript(p.script || "");
         }
         if (savedTranscript.current !== p.transcript) {
-          savedTranscript.current = p.transcript
-          setTranscript(p.transcript || "")
+          savedTranscript.current = p.transcript;
+          setTranscript(p.transcript || "");
         }
-      })
-    poll().catch((e) => setMessage(e.message))
+      });
+    poll().catch((e) => setMessage(e.message));
     const timer = setInterval(() => {
-      poll().catch(() => {})
-    }, 3000)
+      poll().catch(() => {});
+    }, 3000);
     return () => {
-      active = false
-      clearInterval(timer)
-    }
-  }, [id])
+      active = false;
+      clearInterval(timer);
+    };
+  }, [id]);
   async function generate(stage: string) {
-    setBusy(true)
-    setMessage("")
+    setBusy(true);
+    setMessage("");
     try {
       if (stage === "audio") {
         await api(`/projects/${id}`, {
           method: "PATCH",
           body: json({ script }),
-        })
+        });
       }
       await api(`/projects/${id}/generate`, {
         method: "POST",
         body: json({ stage }),
-      })
-      await refresh()
+      });
+      await refresh();
     } catch (e) {
-      setMessage((e as Error).message)
+      setMessage((e as Error).message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   const processing =
     busy ||
     (!!project &&
-      ["queued", "processing", "rendering"].includes(project.status))
-  if (!project) return <Feedback message={message || "ခဏစောင့်ပါ…"} />
+      ["queued", "processing", "rendering"].includes(project.status));
+  if (!project) return <Feedback message={message || "ခဏစောင့်ပါ…"} />;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -109,11 +112,11 @@ export default function Detail({
                   await api(`/projects/${id}`, {
                     method: "PATCH",
                     body: json({ transcript }),
-                  })
-                  await refresh()
-                  setMessage("မူရင်းစာသား သိမ်းပြီးပါပြီ။")
+                  });
+                  await refresh();
+                  setMessage("မူရင်းစာသား သိမ်းပြီးပါပြီ။");
                 } catch (e) {
-                  setMessage((e as Error).message)
+                  setMessage((e as Error).message);
                 }
               }}
             >
@@ -127,22 +130,22 @@ export default function Detail({
                 disabled={processing}
                 accept="video/*,audio/*"
                 onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-                  setBusy(true)
-                  const f = new FormData()
-                  f.append("file", file)
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setBusy(true);
+                  const f = new FormData();
+                  f.append("file", file);
                   try {
                     await api(`/projects/${id}/upload`, {
                       method: "POST",
                       body: f,
-                    })
-                    await refresh()
-                    setMessage("ဖိုင်တင်ပြီးပါပြီ။")
+                    });
+                    await refresh();
+                    setMessage("ဖိုင်တင်ပြီးပါပြီ။");
                   } catch (e) {
-                    setMessage((e as Error).message)
+                    setMessage((e as Error).message);
                   } finally {
-                    setBusy(false)
+                    setBusy(false);
                   }
                 }}
               />
@@ -169,11 +172,11 @@ export default function Detail({
                 await api(`/projects/${id}`, {
                   method: "PATCH",
                   body: json({ script }),
-                })
-                setMessage("ဇာတ်ညွှန်း သိမ်းပြီးပါပြီ။")
-                await refresh()
+                });
+                setMessage("ဇာတ်ညွှန်း သိမ်းပြီးပါပြီ။");
+                await refresh();
               } catch (e) {
-                setMessage((e as Error).message)
+                setMessage((e as Error).message);
               }
             }}
           >
@@ -210,10 +213,10 @@ export default function Detail({
                   await api(`/projects/${id}`, {
                     method: "PATCH",
                     body: json({ caption_style: e.target.value }),
-                  })
-                  await refresh()
+                  });
+                  await refresh();
                 } catch (e) {
-                  setMessage((e as Error).message)
+                  setMessage((e as Error).message);
                 }
               }}
             >
@@ -282,12 +285,12 @@ export default function Detail({
             variant="ghost"
             disabled={processing}
             onClick={async () => {
-              if (!confirm("ပရောဂျက်နှင့် ဖိုင်များကို ဖျက်မလား။")) return
+              if (!confirm("ပရောဂျက်နှင့် ဖိုင်များကို ဖျက်မလား။")) return;
               try {
-                await api(`/projects/${id}`, { method: "DELETE" })
-                router.push("/projects")
+                await api(`/projects/${id}`, { method: "DELETE" });
+                router.push("/projects");
               } catch (e) {
-                setMessage((e as Error).message)
+                setMessage((e as Error).message);
               }
             }}
           >
@@ -296,5 +299,5 @@ export default function Detail({
         </section>
       </div>
     </div>
-  )
+  );
 }

@@ -33,12 +33,13 @@ class Discovery
                 }
             }
         }
+
         if ($platform !== 'youtube') {
             $r = Http::timeout(20)->get('https://api.dailymotion.com/videos', ['search' => $query, 'sort' => $popular ? 'visited-week' : 'relevance', 'limit' => 24, 'fields' => 'id,title,owner.screenname,thumbnail_360_url,url,views_total,duration,created_time']);
             if (! $r->successful()) {
                 $warnings[] = 'Dailymotion ကို လတ်တလော ချိတ်ဆက်၍မရပါ။';
             } else {
-                foreach (array_slice(array_values(array_filter($r->json('list', []), fn ($v) => (int) ($v['duration'] ?? 0) > 0 && (int) $v['duration'] <= 240)), 0, 8) as $v) {
+                foreach (array_slice(array_values(array_filter($r->json('list', []), fn (array $v): bool => (int) ($v['duration'] ?? 0) > 0 && (int) $v['duration'] <= 240)), 0, 8) as $v) {
                     $videos[] = ['platform' => 'dailymotion', 'id' => $v['id'], 'title' => $v['title'], 'creator' => $v['owner.screenname'] ?? '', 'thumbnail' => $v['thumbnail_360_url'] ?? null, 'url' => 'https://www.dailymotion.com/video/'.$v['id'], 'views' => $v['views_total'] ?? null, 'duration' => $v['duration'] ?? null, 'published_at' => $v['created_time'] ?? null, 'source_access' => 'attempt_on_selection'];
                 }
             }

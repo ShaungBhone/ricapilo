@@ -1,6 +1,6 @@
-"use client"
-import { useEffect, useState } from "react"
-import { api, json } from "@/lib/api"
+"use client";
+import { useEffect, useState } from "react";
+import { api, json } from "@/lib/api";
 import {
   Card,
   CardHeader,
@@ -8,41 +8,41 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Field,
   FieldGroup,
   FieldLabel,
   FieldDescription,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Feedback } from "@/components/feedback"
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Feedback } from "@/components/feedback";
 export default function Settings() {
-  const [configured, setConfigured] = useState(false)
-  const [secret, setSecret] = useState("")
-  const [message, setMessage] = useState("")
-  const [busy, setBusy] = useState(false)
+  const [configured, setConfigured] = useState(false);
+  const [secret, setSecret] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     api<{ provider: string }[]>("/keys")
       .then((keys) =>
-        setConfigured(keys.some((k) => k.provider === "openrouter"))
+        setConfigured(keys.some((k) => k.provider === "openrouter")),
       )
-      .catch((e) => setMessage(e.message))
-  }, [])
+      .catch((e) => setMessage(e.message));
+  }, []);
   async function save(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true)
+    e.preventDefault();
+    setBusy(true);
     try {
-      await api("/keys", { method: "PUT", body: json({ secret }) })
-      setSecret("")
-      setConfigured(true)
-      setMessage("API key သိမ်းပြီးပါပြီ။")
+      await api("/keys", { method: "PUT", body: json({ secret }) });
+      setSecret("");
+      setConfigured(true);
+      setMessage("API key သိမ်းပြီးပါပြီ။");
     } catch (e) {
-      setMessage((e as Error).message)
+      setMessage((e as Error).message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   return (
@@ -92,12 +92,12 @@ export default function Settings() {
             <Button
               variant="outline"
               onClick={async () => {
-                if (!confirm("API key ကို ဖယ်ရှားမလား။")) return
+                if (!confirm("API key ကို ဖယ်ရှားမလား။")) return;
                 try {
-                  await api("/keys", { method: "DELETE" })
-                  setConfigured(false)
+                  await api("/keys", { method: "DELETE" });
+                  setConfigured(false);
                 } catch (e) {
-                  setMessage((e as Error).message)
+                  setMessage((e as Error).message);
                 }
               }}
             >
@@ -107,5 +107,5 @@ export default function Settings() {
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

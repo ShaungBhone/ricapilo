@@ -1,8 +1,8 @@
-"use client"
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { api, json, Assistant, Model } from "@/lib/api"
-import { Button, buttonVariants } from "@/components/ui/button"
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { api, json, Assistant, Model } from "@/lib/api";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -10,12 +10,15 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
-import { Feedback, Blank } from "@/components/feedback"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Feedback, Blank } from "@/components/feedback";
 const initial = {
   name: "",
   instructions: "မြန်မာဘာသာဖြင့် ရှင်းလင်းပြီး သဘာဝကျစွာ ပြောဆိုပါ။",
@@ -26,51 +29,51 @@ const initial = {
   voice: "",
   silence_ms: 1200,
   enabled: true,
-}
+};
 export default function Assistants() {
-  const [list, setList] = useState<Assistant[]>([])
-  const [models, setModels] = useState<Model[]>([])
-  const [draft, setDraft] = useState<typeof initial & { id?: number }>(initial)
-  const [message, setMessage] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [audio, setAudio] = useState<string | null>(null)
-  const refresh = () => api<Assistant[]>("/assistants").then(setList)
+  const [list, setList] = useState<Assistant[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [draft, setDraft] = useState<typeof initial & { id?: number }>(initial);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [audio, setAudio] = useState<string | null>(null);
+  const refresh = () => api<Assistant[]>("/assistants").then(setList);
   useEffect(() => {
-    refresh().catch((e) => setMessage(e.message))
+    refresh().catch((e) => setMessage(e.message));
     api<Model[]>("/models")
       .then(setModels)
-      .catch((e) => setMessage(e.message))
-  }, [])
+      .catch((e) => setMessage(e.message));
+  }, []);
   async function save(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true)
+    e.preventDefault();
+    setBusy(true);
     try {
       await api(`/assistants${draft.id ? "/" + draft.id : ""}`, {
         method: draft.id ? "PUT" : "POST",
         body: json(draft),
-      })
-      await refresh()
-      setDraft(initial)
-      setEditing(false)
-      setMessage("လက်ထောက် သိမ်းပြီးပါပြီ။")
+      });
+      await refresh();
+      setDraft(initial);
+      setEditing(false);
+      setMessage("လက်ထောက် သိမ်းပြီးပါပြီ။");
     } catch (e) {
-      setMessage((e as Error).message)
+      setMessage((e as Error).message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   const voiceOptions =
     models.find((m) => m.kind === "speech" && m.id === draft.tts_model)
-      ?.voices || []
+      ?.voices || [];
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">လက်ထောက်များ</h1>
         <Button
           onClick={() => {
-            setDraft(initial)
-            setEditing(true)
+            setDraft(initial);
+            setEditing(true);
           }}
         >
           လက်ထောက်အသစ်
@@ -131,7 +134,7 @@ export default function Assistants() {
                             .filter(
                               (m) =>
                                 m.kind ===
-                                ["text", "transcription", "speech"][i]
+                                ["text", "transcription", "speech"][i],
                             )
                             .map((m) => (
                               <NativeSelectOption key={m.id} value={m.id}>
@@ -140,7 +143,7 @@ export default function Assistants() {
                             ))}
                         </NativeSelect>
                       </Field>
-                    )
+                    ),
                   )}
                 </div>
                 <Field>
@@ -156,8 +159,8 @@ export default function Assistants() {
                   />
                   <datalist id="voices">
                     {voiceOptions.map((v) => {
-                      const id = typeof v === "string" ? v : v.id
-                      return <option key={id} value={id} />
+                      const id = typeof v === "string" ? v : v.id;
+                      return <option key={id} value={id} />;
                     })}
                   </datalist>
                 </Field>
@@ -265,17 +268,17 @@ export default function Assistants() {
                 size="sm"
                 disabled={busy}
                 onClick={async () => {
-                  setBusy(true)
+                  setBusy(true);
                   try {
                     const r = await api<{ audio: string }>(
                       `/assistants/${a.id}/preview`,
-                      { method: "POST" }
-                    )
-                    setAudio("data:audio/mpeg;base64," + r.audio)
+                      { method: "POST" },
+                    );
+                    setAudio("data:audio/mpeg;base64," + r.audio);
                   } catch (e) {
-                    setMessage((e as Error).message)
+                    setMessage((e as Error).message);
                   } finally {
-                    setBusy(false)
+                    setBusy(false);
                   }
                 }}
               >
@@ -285,8 +288,8 @@ export default function Assistants() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setDraft(a)
-                  setEditing(true)
+                  setDraft(a);
+                  setEditing(true);
                 }}
               >
                 ပြင်ဆင်ရန်
@@ -295,12 +298,12 @@ export default function Assistants() {
                 variant="ghost"
                 size="sm"
                 onClick={async () => {
-                  if (!confirm("ဤလက်ထောက်ကို ဖျက်မလား။")) return
+                  if (!confirm("ဤလက်ထောက်ကို ဖျက်မလား။")) return;
                   try {
-                    await api(`/assistants/${a.id}`, { method: "DELETE" })
-                    await refresh()
+                    await api(`/assistants/${a.id}`, { method: "DELETE" });
+                    await refresh();
                   } catch (e) {
-                    setMessage((e as Error).message)
+                    setMessage((e as Error).message);
                   }
                 }}
               >
@@ -311,5 +314,5 @@ export default function Assistants() {
         ))}
       </div>
     </div>
-  )
+  );
 }

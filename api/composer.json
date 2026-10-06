@@ -21,7 +21,8 @@
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^12.5.12"
+        "phpunit/phpunit": "^12.5.12",
+        "rector/rector": "^2.6"
     },
     "autoload": {
         "psr-4": {
@@ -48,6 +49,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
+            "@test:lint",
             "@php artisan test"
         ],
         "post-autoload-dump": [
@@ -67,6 +69,29 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ],
+        "lint:pint": "pint --parallel --test",
+        "lint:pint:fix": "pint --parallel",
+        "lint:prettier": "cd ../frontend && bun run test:lint",
+        "lint:prettier:fix": "cd ../frontend && bun run lint:prettier:fix",
+        "lint:rector": "rector --dry-run",
+        "lint:rector:fix": "rector",
+        "lint": [
+            "@lint:rector",
+            "@lint:pint",
+            "@lint:prettier"
+        ],
+        "lint:fix": [
+            "@lint:rector:fix",
+            "@lint:pint:fix",
+            "@lint:prettier:fix"
+        ],
+        "test:lint": [
+            "@lint"
+        ],
+        "ci:check": [
+            "Composer\\Config::disableProcessTimeout",
+            "@test"
         ]
     },
     "extra": {

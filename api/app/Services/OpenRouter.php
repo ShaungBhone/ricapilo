@@ -32,6 +32,7 @@ class OpenRouter
                 if (! $r->successful()) {
                     throw new RuntimeException('The model catalog is temporarily unavailable.');
                 }
+
                 foreach ($r->json('data', []) as $m) {
                     $all[] = ['id' => $m['id'], 'name' => $m['name'], 'kind' => $modality, 'voices' => $m['supported_voices'] ?? [], 'pricing' => $m['pricing'] ?? []];
                 }
@@ -44,7 +45,7 @@ class OpenRouter
     public function checkModel(string $id, string $kind): void
     {
         $disabled = json_decode(DB::table('site_settings')->where('key', 'disabled_models')->value('value') ?? '[]', true);
-        if (in_array($id, $disabled, true) || ! collect($this->models())->contains(fn ($m) => $m['id'] === $id && $m['kind'] === $kind)) {
+        if (in_array($id, $disabled, true) || ! collect($this->models())->contains(fn ($m): bool => $m['id'] === $id && $m['kind'] === $kind)) {
             throw ValidationException::withMessages(['model' => 'This model is unavailable or disabled.']);
         }
     }
@@ -56,6 +57,7 @@ class OpenRouter
         if (! $r->successful()) {
             throw new RuntimeException('AI generation failed. Check your key, credits, and model settings.');
         }
+
         $text = $r->json('choices.0.message.content');
         if (! is_string($text) || trim($text) === '') {
             throw new RuntimeException('The model returned no text.');
@@ -71,6 +73,7 @@ class OpenRouter
         if ($language) {
             $body['language'] = $language;
         }
+
         $r = $this->client($user)->post('/audio/transcriptions', $body);
         if (! $r->successful() || ! is_string($r->json('text'))) {
             throw new RuntimeException('Transcription failed. Check the selected model and source audio.');

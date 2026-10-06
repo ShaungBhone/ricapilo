@@ -7,9 +7,13 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "lint": "bun run lint:eslint && bun run test:lint",
+    "format": "bun run lint:prettier:fix",
+    "typecheck": "tsc --noEmit",
+    "lint:eslint": "eslint .",
+    "lint:prettier:fix": "prettier --write .",
+    "test:lint": "prettier --check .",
+    "lint:fix": "eslint . --fix && bun run lint:prettier:fix"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

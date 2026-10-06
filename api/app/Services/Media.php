@@ -14,10 +14,12 @@ class Media
         if ($p->media_path) {
             return Storage::disk('local')->path($p->media_path);
         }
+
         if (! in_array($p->source, ['youtube', 'dailymotion'], true) || ! preg_match('/^[a-zA-Z0-9_-]{1,80}
 $/', $p->source_id ?? '')) {
             throw new RuntimeException('Upload a video or transcript to continue.');
         }
+
         $url = $p->source === 'youtube' ? 'https://www.youtube.com/watch?v='.$p->source_id : 'https://www.dailymotion.com/video/'.$p->source_id;
         $relative = 'projects/'.$p->id.'/source.mp4';
         $path = Storage::disk('local')->path($relative);
@@ -26,6 +28,7 @@ $/', $p->source_id ?? '')) {
         if (! $result->successful() || ! is_file($path)) {
             throw new RuntimeException('This platform did not provide usable media. Upload the video or paste its transcript.');
         }
+
         $p->update(['media_path' => $relative]);
 
         return $path;
@@ -36,10 +39,12 @@ $/', $p->source_id ?? '')) {
         if (! is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
+
         $r = Process::timeout(600)->run([config('recap.ffmpeg'), '-y', '-i', $path, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'libmp3lame', '-b:a', '64k', '-f', 'segment', '-segment_time', '240', $directory.'/part-%03d.mp3']);
         if (! $r->successful()) {
             throw new RuntimeException('Could not extract audio from this source.');
         }
+
         $files = glob($directory.'/part-*.mp3');
         sort($files);
         if (! $files) {

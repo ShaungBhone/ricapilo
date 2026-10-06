@@ -27,6 +27,7 @@ return new class extends Migration
             $t->json('captions')->nullable();
             $t->json('usage')->nullable();
             $t->string('format')->default('vertical');
+            $t->string('caption_style')->default('clean-bottom');
             $t->unsignedInteger('target_seconds')->default(60);
             $t->timestamps();
         });

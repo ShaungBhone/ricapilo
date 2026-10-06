@@ -1,20 +1,20 @@
-"use client"
-import { Player } from "@remotion/player"
-import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion"
-import { Caption } from "@/lib/api"
+"use client";
+import { Player } from "@remotion/player";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
+import { Caption } from "@/lib/api";
 function CaptionPreview({
   captions,
   title,
   style,
 }: {
-  captions: Caption[]
-  title: string
-  style: string
+  captions: Caption[];
+  title: string;
+  style: string;
 }) {
-  const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
-  const ms = (frame / fps) * 1000
-  const caption = captions.find((c) => ms >= c.startMs && ms < c.endMs)
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const ms = (frame / fps) * 1000;
+  const caption = captions.find((c) => ms >= c.startMs && ms < c.endMs);
   return (
     <AbsoluteFill
       style={{
@@ -43,7 +43,7 @@ function CaptionPreview({
         {caption?.text}
       </div>
     </AbsoluteFill>
-  )
+  );
 }
 export function VideoPreview({
   captions,
@@ -51,15 +51,15 @@ export function VideoPreview({
   format,
   style,
 }: {
-  captions: Caption[]
-  title: string
-  format: string
-  style: string
+  captions: Caption[];
+  title: string;
+  format: string;
+  style: string;
 }) {
   const frames = Math.max(
     30,
-    Math.ceil(((captions.at(-1)?.endMs || 3000) / 1000) * 30)
-  )
+    Math.ceil(((captions.at(-1)?.endMs || 3000) / 1000) * 30),
+  );
   return (
     <Player
       component={CaptionPreview}
@@ -71,5 +71,5 @@ export function VideoPreview({
       controls
       className="mx-auto w-full max-w-lg overflow-hidden rounded-xl"
     />
-  )
+  );
 }

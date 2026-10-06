@@ -98,8 +98,9 @@ Laravel Boost is installed as a development dependency. Use its generated guidel
 ```sh
 cd api
 composer validate --no-check-publish
-php artisan test
-vendor/bin/pint --test
+composer lint
+# If needed: composer lint:fix, then re-run composer lint
+composer test
 cd ../frontend
 bun run typecheck
 bun run lint
@@ -107,6 +108,8 @@ bun run build
 cd ../renderer
 node --test
 ```
+
+Lint uses Rector prepared code-quality sets, the Laravel Pint preset, and Prettier defaults with Tailwind sorting. `composer test` runs lint before the API suite. Install the frontend Bun dependencies before running Composer lint commands. The API has no Blade templates, so Blade-only lint is omitted. Next.js ESLint and TypeScript checks remain enabled.
 
 API tests mock provider responses and prevent stray requests, so they do not use paid API credits. The full live OpenRouter workflow requires your own key and credits. GitHub Actions runs API, frontend, and caption-format checks.
 

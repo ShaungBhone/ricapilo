@@ -1,8 +1,8 @@
-"use client"
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { api, Project, Page } from "@/lib/api"
-import { buttonVariants, Button } from "@/components/ui/button"
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { api, Project, Page } from "@/lib/api";
+import { buttonVariants, Button } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -10,18 +10,18 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Feedback, Blank } from "@/components/feedback"
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Feedback, Blank } from "@/components/feedback";
 export default function Projects() {
-  const [page, setPage] = useState(1)
-  const [data, setData] = useState<Page<Project> | null>(null)
-  const [message, setMessage] = useState("")
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<Page<Project> | null>(null);
+  const [message, setMessage] = useState("");
   useEffect(() => {
     api<Page<Project>>(`/projects?page=${page}`)
       .then(setData)
-      .catch((e) => setMessage(e.message))
-  }, [page])
+      .catch((e) => setMessage(e.message));
+  }, [page]);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -75,5 +75,5 @@ export default function Projects() {
         </div>
       )}
     </div>
-  )
+  );
 }

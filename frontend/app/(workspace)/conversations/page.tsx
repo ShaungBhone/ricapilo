@@ -1,7 +1,7 @@
-"use client"
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { api, Conversation, Page } from "@/lib/api"
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { api, Conversation, Page } from "@/lib/api";
 import {
   Card,
   CardHeader,
@@ -9,19 +9,19 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card"
-import { buttonVariants } from "@/components/ui/button"
-import { Blank, Feedback } from "@/components/feedback"
-import { Transcript } from "@/components/transcript"
+} from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { Blank, Feedback } from "@/components/feedback";
+import { Transcript } from "@/components/transcript";
 export default function Conversations() {
-  const [list, setList] = useState<Conversation[]>([])
-  const [selected, setSelected] = useState<Conversation | null>(null)
-  const [message, setMessage] = useState("")
+  const [list, setList] = useState<Conversation[]>([]);
+  const [selected, setSelected] = useState<Conversation | null>(null);
+  const [message, setMessage] = useState("");
   useEffect(() => {
     api<Page<Conversation>>("/conversations")
       .then((r) => setList(r.data))
-      .catch((e) => setMessage(e.message))
-  }, [])
+      .catch((e) => setMessage(e.message));
+  }, []);
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">စကားဝိုင်းများ</h1>
@@ -67,5 +67,5 @@ export default function Conversations() {
         </Card>
       )}
     </div>
-  )
+  );
 }

@@ -1,8 +1,8 @@
-"use client"
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ArrowUp,
   Mic,
@@ -11,8 +11,8 @@ import {
   Upload,
   AudioLines,
   ArrowUpRight,
-} from "lucide-react"
-import { Button, buttonVariants } from "@/components/ui/button"
+} from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -20,86 +20,89 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   InputGroup,
   InputGroupTextarea,
   InputGroupAddon,
-} from "@/components/ui/input-group"
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
-import { Badge } from "@/components/ui/badge"
-import { Blank, Feedback } from "@/components/feedback"
-import { useMicrophone } from "@/hooks/use-microphone"
-import { api, json, Assistant, Video } from "@/lib/api"
+} from "@/components/ui/input-group";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Badge } from "@/components/ui/badge";
+import { Blank, Feedback } from "@/components/feedback";
+import { useMicrophone } from "@/hooks/use-microphone";
+import { api, json, Assistant, Video } from "@/lib/api";
 export default function Home() {
-  const router = useRouter()
-  const [prompt, setPrompt] = useState("")
-  const [platform, setPlatform] = useState("all")
-  const [assistants, setAssistants] = useState<Assistant[]>([])
-  const [assistant, setAssistant] = useState("")
-  const [videos, setVideos] = useState<Video[]>([])
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState("")
-  const [searched, setSearched] = useState(false)
+  const router = useRouter();
+  const [prompt, setPrompt] = useState("");
+  const [platform, setPlatform] = useState("all");
+  const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [assistant, setAssistant] = useState("");
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [searched, setSearched] = useState(false);
   useEffect(() => {
     api<Assistant[]>("/assistants")
       .then((a) => {
-        setAssistants(a.filter((x) => x.enabled))
-        if (a[0]) setAssistant(String(a[0].id))
+        setAssistants(a.filter((x) => x.enabled));
+        if (a[0]) setAssistant(String(a[0].id));
       })
-      .catch((e) => setMessage(e.message))
-  }, [])
+      .catch((e) => setMessage(e.message));
+  }, []);
   const mic = useMicrophone(async (blob) => {
     if (!assistant) {
-      setMessage("လက်ထောက်ကို အရင်ရွေးချယ်ပါ။")
-      return
+      setMessage("လက်ထောက်ကို အရင်ရွေးချယ်ပါ။");
+      return;
     }
-    setBusy(true)
-    const f = new FormData()
+    setBusy(true);
+    const f = new FormData();
     f.append(
       "audio",
       blob,
-      blob.type.includes("ogg") ? "voice.ogg" : "voice.webm"
-    )
-    f.append("assistant_id", assistant)
+      blob.type.includes("ogg") ? "voice.ogg" : "voice.webm",
+    );
+    f.append("assistant_id", assistant);
     try {
       const r = await api<{ text: string }>("/transcribe", {
         method: "POST",
         body: f,
-      })
-      setPrompt(r.text)
+      });
+      setPrompt(r.text);
     } catch (e) {
-      setMessage((e as Error).message)
+      setMessage((e as Error).message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  })
+  });
   async function search() {
-    setBusy(true)
-    setMessage("")
+    setBusy(true);
+    setMessage("");
     try {
       const r = await api<{ videos: Video[]; warnings: string[] }>(
         "/discover",
         {
           method: "POST",
           body: json({ prompt, platform, assistant_id: assistant || null }),
-        }
-      )
-      setVideos(r.videos)
-      setSearched(true)
-      setMessage(r.warnings.join(" "))
+        },
+      );
+      setVideos(r.videos);
+      setSearched(true);
+      setMessage(r.warnings.join(" "));
     } catch (e) {
-      setMessage((e as Error).message)
+      setMessage((e as Error).message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   async function select(v: Video) {
     if (!assistant) {
-      setMessage("ပရောဂျက်အတွက် လက်ထောက်တစ်ခု ရွေးချယ်ပါ။")
-      return
+      setMessage("ပရောဂျက်အတွက် လက်ထောက်တစ်ခု ရွေးချယ်ပါ။");
+      return;
     }
-    setBusy(true)
+    setBusy(true);
     try {
       const p = await api<{ id: number }>("/projects", {
         method: "POST",
@@ -111,12 +114,12 @@ export default function Home() {
           format: "vertical",
           target_seconds: 60,
         }),
-      })
-      router.push(`/projects/${p.id}`)
+      });
+      router.push(`/projects/${p.id}`);
     } catch (e) {
-      setMessage((e as Error).message)
+      setMessage((e as Error).message);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   return (
@@ -136,8 +139,8 @@ export default function Home() {
         <form
           className="w-full"
           onSubmit={(e) => {
-            e.preventDefault()
-            void search()
+            e.preventDefault();
+            void search();
           }}
         >
           <InputGroup className="rounded-2xl">
@@ -299,5 +302,5 @@ export default function Home() {
         </section>
       )}
     </div>
-  )
+  );
 }

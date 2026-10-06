@@ -20,7 +20,7 @@ class WorkspaceController extends Controller
 {
     public function keys(Request $r): mixed
     {
-        return Credential::where('user_id', $r->user()->id)->get()->map(fn ($k) => ['provider' => $k->provider, 'configured' => true, 'updated_at' => $k->updated_at]);
+        return Credential::where('user_id', $r->user()->id)->get()->map(fn ($k): array => ['provider' => $k->provider, 'configured' => true, 'updated_at' => $k->updated_at]);
     }
 
     public function saveKey(Request $r): mixed
@@ -42,7 +42,7 @@ class WorkspaceController extends Controller
     {
         $disabled = json_decode(DB::table('site_settings')->where('key', 'disabled_models')->value('value') ?? '[]', true);
 
-        return array_values(array_filter($ai->models(), fn ($m) => ! in_array($m['id'], $disabled, true)));
+        return array_values(array_filter($ai->models(), fn (array $m): bool => ! in_array($m['id'], $disabled, true)));
     }
 
     public function assistants(Request $r): mixed
@@ -56,6 +56,7 @@ class WorkspaceController extends Controller
         foreach (['llm_model' => 'text', 'stt_model' => 'transcription', 'tts_model' => 'speech'] as $key => $kind) {
             $ai->checkModel($v[$key], $kind);
         }
+
         $a = $id ? Assistant::where('user_id', $r->user()->id)->findOrFail($id) : new Assistant(['user_id' => $r->user()->id]);
         $a->fill($v)->save();
 
@@ -121,6 +122,7 @@ class WorkspaceController extends Controller
                 $locked->captions = null;
                 $locked->status = 'script_ready';
             }
+
             if (isset($v['transcript']) || isset($v['assistant_id'])) {
                 $locked->script = null;
                 $locked->audio_path = null;
@@ -128,12 +130,14 @@ class WorkspaceController extends Controller
                 $locked->captions = null;
                 $locked->status = 'draft';
             }
+
             if (isset($v['format']) || isset($v['caption_style'])) {
                 $locked->video_path = null;
                 if ($locked->audio_path) {
                     $locked->status = 'audio_ready';
                 }
             }
+
             $locked->save();
         });
 
@@ -162,17 +166,21 @@ class WorkspaceController extends Controller
             if ($v['stage'] === 'audio') {
                 abort_unless($locked->script, 422, 'Generate and review the script first.');
             }
+
             if ($v['stage'] === 'video') {
                 abort_unless($locked->audio_path, 422, 'Generate narration first.');
             }
+
             if ($v['stage'] === 'script') {
                 $locked->script = null;
                 $locked->audio_path = null;
                 $locked->captions = null;
             }
+
             if ($v['stage'] !== 'video') {
                 $locked->video_path = null;
             }
+
             $locked->update(['status' => 'queued', 'stage' => $v['stage'], 'error' => null]);
             ProcessProject::dispatch($p->id, $v['stage'])->afterCommit();
         });
@@ -188,6 +196,7 @@ class WorkspaceController extends Controller
 
             return response($p->script)->header('Content-Type', 'text/plain; charset=utf-8')->header('Content-Disposition', 'attachment; filename="recap.txt"');
         }
+
         $path = match ($kind) {
             'audio' => $p->audio_path,'video' => $p->video_path,default => null
         };
@@ -226,9 +235,11 @@ class WorkspaceController extends Controller
             $result = $ai->transcribe($r->user(), $a->stt_model, file_get_contents($file->path()), $file->extension(), 'my');
             $text = $result['text'];
         }
+
         if (! trim($text)) {
             throw ValidationException::withMessages(['text' => 'Speak or type a message.']);
         }
+
         $c = empty($v['conversation_id']) ? new Conversation(['user_id' => $r->user()->id, 'assistant_id' => $a->id, 'title' => mb_substr($text, 0, 80), 'messages' => []]) : Conversation::where('user_id', $r->user()->id)->findOrFail($v['conversation_id']);
         $messages = $c->messages ?? [];
         $messages[] = ['role' => 'user', 'content' => $text];
@@ -236,6 +247,7 @@ class WorkspaceController extends Controller
         $messages[] = ['role' => 'assistant', 'content' => $answer['text']];
         $c->messages = $messages;
         $c->save();
+
         $audio = null;
         if ($r->boolean('speak')) {
             $audio = base64_encode($ai->speech($r->user(), $a->tts_model, $a->voice, $answer['text']));
@@ -274,6 +286,7 @@ class WorkspaceController extends Controller
         if (! empty($v['youtube_key'])) {
             DB::table('site_settings')->updateOrInsert(['key' => 'youtube_key'], ['value' => Crypt::encryptString($v['youtube_key'])]);
         }
+
         DB::table('site_settings')->updateOrInsert(['key' => 'disabled_models'], ['value' => json_encode($v['disabled_models'])]);
 
         return $this->admin($r);

@@ -1,29 +1,29 @@
-"use client"
-import { useEffect, useState } from "react"
-import { api, json } from "@/lib/api"
-import { Field, FieldLabel, FieldGroup } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { Feedback } from "@/components/feedback"
+"use client";
+import { useEffect, useState } from "react";
+import { api, json } from "@/lib/api";
+import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Feedback } from "@/components/feedback";
 export default function Admin() {
-  const [key, setKey] = useState("")
-  const [disabled, setDisabled] = useState("")
-  const [message, setMessage] = useState("")
-  const [allowed, setAllowed] = useState(false)
+  const [key, setKey] = useState("");
+  const [disabled, setDisabled] = useState("");
+  const [message, setMessage] = useState("");
+  const [allowed, setAllowed] = useState(false);
   useEffect(() => {
     api<{ youtube_configured: boolean; disabled_models: string[] }>("/admin")
       .then((r) => {
-        setAllowed(true)
-        setDisabled(r.disabled_models.join("\n"))
+        setAllowed(true);
+        setDisabled(r.disabled_models.join("\n"));
         setMessage(
           r.youtube_configured
             ? "YouTube ချိတ်ဆက်ပြီးပါပြီ။"
-            : "YouTube key ထည့်ရန် လိုပါသည်။"
-        )
+            : "YouTube key ထည့်ရန် လိုပါသည်။",
+        );
       })
-      .catch((e) => setMessage(e.message))
-  }, [])
+      .catch((e) => setMessage(e.message));
+  }, []);
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <h1 className="text-2xl font-semibold">စီမံခန့်ခွဲမှု</h1>
@@ -31,7 +31,7 @@ export default function Admin() {
       {allowed && (
         <form
           onSubmit={async (e) => {
-            e.preventDefault()
+            e.preventDefault();
             try {
               await api("/admin", {
                 method: "PUT",
@@ -42,11 +42,11 @@ export default function Admin() {
                     .map((s) => s.trim())
                     .filter(Boolean),
                 }),
-              })
-              setKey("")
-              setMessage("သိမ်းပြီးပါပြီ။")
+              });
+              setKey("");
+              setMessage("သိမ်းပြီးပါပြီ။");
             } catch (e) {
-              setMessage((e as Error).message)
+              setMessage((e as Error).message);
             }
           }}
         >
@@ -77,5 +77,5 @@ export default function Admin() {
         </form>
       )}
     </div>
-  )
+  );
 }

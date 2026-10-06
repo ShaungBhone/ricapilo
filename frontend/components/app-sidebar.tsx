@@ -1,6 +1,6 @@
-"use client"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+"use client";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   AudioLines,
   Home,
@@ -11,8 +11,8 @@ import {
   Shield,
   LogOut,
   Moon,
-} from "lucide-react"
-import { useTheme } from "next-themes"
+} from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   Sidebar,
   SidebarContent,
@@ -24,13 +24,13 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { api, User } from "@/lib/api"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { api, User } from "@/lib/api";
 export function AppSidebar({ user }: { user: User }) {
-  const path = usePathname()
-  const router = useRouter()
-  const { theme, setTheme } = useTheme()
+  const path = usePathname();
+  const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const items = [
     { title: "ပင်မစာမျက်နှာ", url: "/", icon: Home },
     { title: "လက်ထောက်များ", url: "/assistants", icon: Bot },
@@ -40,7 +40,7 @@ export function AppSidebar({ user }: { user: User }) {
     ...(user.is_admin
       ? [{ title: "စီမံခန့်ခွဲမှု", url: "/admin", icon: Shield }]
       : []),
-  ]
+  ];
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -106,8 +106,8 @@ export function AppSidebar({ user }: { user: User }) {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={async () => {
-                await api("/auth/logout", { method: "POST" })
-                router.replace("/login")
+                await api("/auth/logout", { method: "POST" });
+                router.replace("/login");
               }}
               tooltip="ထွက်ရန်"
             >
@@ -119,5 +119,5 @@ export function AppSidebar({ user }: { user: User }) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

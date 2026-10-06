@@ -19,6 +19,7 @@ class MakeAdmin extends Command
 
             return self::FAILURE;
         }
+
         $u->forceFill(['is_admin' => true])->save();
         $this->info('Administrator access granted.');
 

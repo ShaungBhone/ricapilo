@@ -1,3 +1,11 @@
+# Migration naming
+
+Avoid `add_` migration names. Keep the initial schema complete in its `create_*_table` migrations.
+
+# Project lint workflow
+
+Follow the lint setup in this repository before running tests: run `composer lint`, use `composer lint:fix` when needed, then re-run `composer lint` and `composer test`. Rector uses the prepared code-quality sets; Pint uses the Laravel preset. Prettier runs in `../frontend`, so Bun and its installed dependencies are required. Blade lint is omitted because this API has no Blade templates. Keep Next.js ESLint and TypeScript checks enabled in the frontend.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
