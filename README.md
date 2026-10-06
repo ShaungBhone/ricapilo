@@ -1,6 +1,6 @@
 # Ricapilo
 
-An open-source Burmese AI recap workspace: Laravel 13 API, Next.js 16 frontend, and an isolated FFmpeg video renderer. Uses Bun, Docker Compose, Laravel Boost, and shadcn preset `b7Br6guwa` with the `login-03` and `sidebar-07` blocks.
+An open-source Burmese AI recap workspace: Laravel 13 API, Next.js 16 frontend, and an isolated FFmpeg video renderer. Uses Bun, Docker Compose, Laravel, and shadcn.
 
 ## Start with Docker
 
