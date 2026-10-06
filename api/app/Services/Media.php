@@ -15,12 +15,15 @@ class Media
             return Storage::disk('local')->path($p->media_path);
         }
 
-        if (! in_array($p->source, ['youtube', 'dailymotion'], true) || ! preg_match('/^[a-zA-Z0-9_-]{1,80}
-$/', $p->source_id ?? '')) {
+        if (! in_array($p->source, ['youtube', 'bilibili', 'dailymotion'], true) || ! preg_match('/^[a-zA-Z0-9_-]{1,80}$/D', $p->source_id ?? '')) {
             throw new GenerationException('app.upload_a_video_or_transcript_to_continue');
         }
 
-        $url = $p->source === 'youtube' ? 'https://www.youtube.com/watch?v='.$p->source_id : 'https://www.dailymotion.com/video/'.$p->source_id;
+        $url = match ($p->source) {
+            'youtube' => 'https://www.youtube.com/watch?v='.$p->source_id,
+            'bilibili' => 'https://www.bilibili.com/video/'.$p->source_id,
+            default => 'https://www.dailymotion.com/video/'.$p->source_id,
+        };
         $relative = 'projects/'.$p->id.'/source.mp4';
         $path = Storage::disk('local')->path($relative);
         Storage::disk('local')->makeDirectory('projects/'.$p->id);

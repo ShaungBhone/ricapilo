@@ -1,5 +1,5 @@
 "use client";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -38,6 +38,8 @@ import { useMicrophone } from "@/hooks/use-microphone";
 import { api, json, Assistant, Video } from "@/lib/api";
 export default function Home() {
   const t = useTranslations();
+  const locale = useLocale();
+  const [popular, setPopular] = useState(false);
 
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -85,7 +87,7 @@ export default function Home() {
     setBusy(true);
     setMessage("");
     try {
-      const r = await api<{ videos: Video[]; warnings: string[] }>(
+      const r = await api<{ videos: Video[]; warnings: string[]; criteria: { mode: string } }>(
         "/discover",
         {
           method: "POST",
@@ -93,6 +95,7 @@ export default function Home() {
         },
       );
       setVideos(r.videos);
+      setPopular(r.criteria.mode === "popular");
       setSearched(true);
       setMessage(r.warnings.join("\n"));
     } catch (e) {
@@ -176,11 +179,11 @@ export default function Home() {
                 onChange={(e) => setPlatform(e.target.value)}
               >
                 <NativeSelectOption value="all">
-                  YouTube + Dailymotion
+                  YouTube + Bilibili
                 </NativeSelectOption>
                 <NativeSelectOption value="youtube">YouTube</NativeSelectOption>
-                <NativeSelectOption value="dailymotion">
-                  Dailymotion
+                <NativeSelectOption value="bilibili">
+                  Bilibili
                 </NativeSelectOption>
               </NativeSelect>
               <Button
@@ -226,6 +229,7 @@ export default function Home() {
         )}
         <div className="flex flex-wrap justify-center gap-2">
           {[
+            t("workspace.giveMeViralVideosToRecap"),
             t("workspace.shortVideosAboutSpace"),
             t("workspace.koreanMovieTrailers"),
             t("workspace.natureVideos"),
@@ -252,12 +256,14 @@ export default function Home() {
         <section className="flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
-              {t("workspace.searchResults")}
+              {t(popular ? "workspace.recentPopularVideos" : "workspace.searchResults")}
             </h2>
             <Badge variant="outline">
               {t("shared.videoCount", { count: videos.length })}
             </Badge>
           </div>
+          {popular && <p className="text-sm text-muted-foreground">{t("workspace.popularityNote")}</p>}
+          <p className="text-sm text-muted-foreground">{t("workspace.accessNote")}</p>
           {!videos.length && (
             <Blank
               title={t("workspace.noVideosFound")}
@@ -291,6 +297,11 @@ export default function Home() {
                     {v.views != null &&
                       t("shared.viewCount", { count: v.views })}
                   </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("workspace.durationSeconds", { count: v.duration })}
+                    {v.published_at && ` · ${new Date(v.published_at).toLocaleDateString(locale)}`}
+                  </p>
+                  <p className="text-sm">{v.reason}</p>
                 </CardContent>
                 <CardFooter className="gap-2">
                   <Button disabled={busy} onClick={() => void select(v)}>

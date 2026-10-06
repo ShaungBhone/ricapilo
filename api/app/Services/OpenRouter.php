@@ -110,6 +110,17 @@ class OpenRouter
         return ['text' => $response->text, 'usage' => $usage];
     }
 
+    public function discoveryIntent(User $user, string $model, string $prompt): array
+    {
+        $this->checkModel($model, 'text');
+        $provider = $this->provider($user, app(OpenRouterGateway::class));
+        try {
+            return (new DiscoveryIntentAgent)->prompt($prompt, provider: [$provider->name() => $model], timeout: 90)->toArray();
+        } catch (Throwable) {
+            throw new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings');
+        }
+    }
+
     public function transcribe(User $user, string $model, string $bytes, string $format, ?string $language = null): array
     {
         $this->checkModel($model, 'transcription');

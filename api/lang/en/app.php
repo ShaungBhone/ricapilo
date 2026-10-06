@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'bilibili_is_temporarily_unavailable' => 'Bilibili is temporarily unavailable.',
+    'from_the_platform_popularity_feed' => 'From the platform popularity feed.',
+    'matches_your_topic' => 'Matches your topic.',
+    'regional_chart_unavailable_showing_global_results' => 'Regional popularity chart unavailable; showing global results.',
+
     'email_or_password_is_incorrect' => 'Email or password is incorrect.',
     'if_that_email_is_registered_a_reset_link_has_been_sent' => 'If that email is registered, a reset link has been sent.',
     'password_reset_you_can_sign_in_now' => 'Password reset. You can sign in now.',

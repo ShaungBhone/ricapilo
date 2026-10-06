@@ -55,7 +55,12 @@
     "verifyYourEmailBeforeUsingAi": "Verify your email before using AI.",
     "youCanVerifyYourEmailAiIsAlso": "You can verify your email. AI is also available without verification.",
     "verificationEmailSent": "Verification email sent.",
-    "resendVerificationEmail": "Resend verification email"
+    "resendVerificationEmail": "Resend verification email",
+    "recentPopularVideos": "Recent popular videos",
+    "giveMeViralVideosToRecap": "Give me viral videos to recap",
+    "popularityNote": "Popularity uses platform feeds and reported views. It does not guarantee a video will go viral.",
+    "accessNote": "Media access is checked when generating your recap. You can upload a file or paste a transcript if access fails.",
+    "durationSeconds": "{count} seconds"
   },
   "assistants": {
     "assistantSaved": "Assistant saved.",
@@ -240,6 +245,10 @@
     "apiVerificationEmailSent": "Verification email sent.",
     "apiAnAdministratorMustAddAYoutubeApiKeyToSearchYoutube": "An administrator must add a YouTube API key to search YouTube.",
     "apiYoutubeIsTemporarilyUnavailable": "YouTube is temporarily unavailable.",
-    "apiDailymotionIsTemporarilyUnavailable": "Dailymotion is temporarily unavailable."
+    "apiDailymotionIsTemporarilyUnavailable": "Dailymotion is temporarily unavailable.",
+    "apiBilibiliIsTemporarilyUnavailable": "Bilibili is temporarily unavailable.",
+    "apiFromThePlatformPopularityFeed": "From the platform popularity feed.",
+    "apiMatchesYourTopic": "Matches your topic.",
+    "apiRegionalChartUnavailableShowingGlobalResults": "Regional popularity chart unavailable; showing global results."
   }
 }

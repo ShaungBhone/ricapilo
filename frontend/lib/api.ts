@@ -87,10 +87,12 @@ export type Video = {
   platform: string;
   title: string;
   creator: string;
-  thumbnail: string;
+  thumbnail: string | null;
   url: string;
   views: number | null;
-  duration: number | string | null;
+  duration: number;
+  published_at: string | null;
+  reason: string;
 };
 export type Caption = { text: string; startMs: number; endMs: number };
 export type Project = {

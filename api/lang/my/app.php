@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'bilibili_is_temporarily_unavailable' => 'Bilibili ကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။',
+    'from_the_platform_popularity_feed' => 'ပလက်ဖောင်း၏ လူကြိုက်များစာရင်းမှ ဖြစ်ပါသည်။',
+    'matches_your_topic' => 'သင့်အကြောင်းအရာနှင့် ကိုက်ညီပါသည်။',
+    'regional_chart_unavailable_showing_global_results' => 'ဒေသအလိုက် လူကြိုက်များစာရင်း မရနိုင်သဖြင့် ကမ္ဘာတစ်ဝန်း ရလဒ်များကို ပြထားပါသည်။',
+
     'email_or_password_is_incorrect' => 'အီးမေးလ် သို့မဟုတ် စကားဝှက် မမှန်ပါ။',
     'if_that_email_is_registered_a_reset_link_has_been_sent' => 'အကောင့်ရှိပါက စကားဝှက်ပြန်သတ်မှတ်ရန် အီးမေးလ် ပို့ပြီးပါပြီ။',
     'password_reset_you_can_sign_in_now' => 'စကားဝှက် ပြန်သတ်မှတ်ပြီးပါပြီ။ ယခု ဝင်ရောက်နိုင်ပါသည်။',

@@ -32,7 +32,7 @@ This mounts `frontend/` and runs Next.js development mode with file polling for 
 
 ## Configure discovery
 
-Dailymotion discovery uses its public video API. YouTube requires a YouTube Data API key managed by the administrator. Create an account, then promote it (verify it first only when `EMAIL_VERIFICATION_REQUIRED=true`):
+Discovery supports YouTube and Bilibili. Broad popularity requests use platform feeds; topic requests use searches. Results are limited to videos under four minutes, with dates and reported views. Bilibili public discovery uses `bilibili-cli==0.6.2`, installed in the API Docker image; local development requires `python3 -m pip install bilibili-cli==0.6.2` or a virtual environment selected with `MEDIA_PYTHON`. New Dailymotion projects are disabled; existing projects remain readable and processable. YouTube requires a YouTube Data API key managed by the administrator. Create an account, then promote it (verify it first only when `EMAIL_VERIFICATION_REQUIRED=true`):
 
 ```sh
 docker compose exec api php artisan recap:admin you@example.com

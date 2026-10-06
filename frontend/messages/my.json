@@ -55,7 +55,12 @@
     "verifyYourEmailBeforeUsingAi": "AI မသုံးမီ သင့်အီးမေးလ်ကို အတည်ပြုပါ။",
     "youCanVerifyYourEmailAiIsAlso": "သင့်အီးမေးလ်ကို အတည်ပြုနိုင်ပါသည်။ အတည်မပြုဘဲလည်း AI ကို အသုံးပြုနိုင်ပါသည်။",
     "verificationEmailSent": "အတည်ပြုအီးမေးလ် ပို့ပြီးပါပြီ။",
-    "resendVerificationEmail": "အတည်ပြုအီးမေးလ် ပြန်ပို့ရန်"
+    "resendVerificationEmail": "အတည်ပြုအီးမေးလ် ပြန်ပို့ရန်",
+    "recentPopularVideos": "လတ်တလော လူကြိုက်များ ဗီဒီယိုများ",
+    "giveMeViralVideosToRecap": "အနှစ်ချုပ်ရန် လူကြိုက်များ ဗီဒီယိုများ ရှာပေးပါ",
+    "popularityNote": "လူကြိုက်များမှုကို ပလက်ဖောင်းစာရင်းနှင့် ကြည့်ရှုမှုအရ သတ်မှတ်ထားပါသည်။ ဗီဒီယိုတစ်ခု ရေပန်းစားမည်ဟု အာမခံခြင်း မဟုတ်ပါ။",
+    "accessNote": "အနှစ်ချုပ် ဖန်တီးချိန်တွင် မီဒီယာရယူနိုင်မှုကို စစ်ဆေးပါမည်။ ရယူ၍ မရပါက ဖိုင်တင်ခြင်း သို့မဟုတ် စာသားကူးထည့်ခြင်း ပြုလုပ်နိုင်ပါသည်။",
+    "durationSeconds": "{count} စက္ကန့်"
   },
   "assistants": {
     "assistantSaved": "လက်ထောက် သိမ်းပြီးပါပြီ။",
@@ -240,6 +245,10 @@
     "apiVerificationEmailSent": "အတည်ပြုအီးမေးလ် ပို့ပြီးပါပြီ။",
     "apiAnAdministratorMustAddAYoutubeApiKeyToSearchYoutube": "YouTube ရှာဖွေရန် စီမံခန့်ခွဲသူက API key ထည့်ရန် လိုပါသည်။",
     "apiYoutubeIsTemporarilyUnavailable": "YouTube ကို လတ်တလော ချိတ်ဆက်၍မရပါ။",
-    "apiDailymotionIsTemporarilyUnavailable": "Dailymotion ကို လတ်တလော ချိတ်ဆက်၍မရပါ။"
+    "apiDailymotionIsTemporarilyUnavailable": "Dailymotion ကို လတ်တလော ချိတ်ဆက်၍မရပါ။",
+    "apiBilibiliIsTemporarilyUnavailable": "Bilibili ကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။",
+    "apiFromThePlatformPopularityFeed": "ပလက်ဖောင်း၏ လူကြိုက်များစာရင်းမှ ဖြစ်ပါသည်။",
+    "apiMatchesYourTopic": "သင့်အကြောင်းအရာနှင့် ကိုက်ညီပါသည်။",
+    "apiRegionalChartUnavailableShowingGlobalResults": "ဒေသအလိုက် လူကြိုက်များစာရင်း မရနိုင်သဖြင့် ကမ္ဘာတစ်ဝန်း ရလဒ်များကို ပြထားပါသည်။"
   }
 }

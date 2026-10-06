@@ -72,15 +72,14 @@ class WorkspaceController extends Controller
 
     public function discover(Request $r, OpenRouter $ai, Discovery $search): mixed
     {
-        $v = $r->validate(['prompt' => 'required|string|max:1000', 'platform' => 'required|in:all,youtube,dailymotion', 'assistant_id' => ['nullable', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)]]);
-        $query = $v['prompt'];
+        $v = $r->validate(['prompt' => 'required|string|max:1000', 'platform' => 'required|in:all,youtube,bilibili', 'assistant_id' => ['nullable', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)]]);
+        $criteria = $search->intent($v['prompt']);
         if (! empty($v['assistant_id'])) {
             $a = Assistant::where('user_id', $r->user()->id)->findOrFail($v['assistant_id']);
-            $out = $ai->chat($r->user(), $a->llm_model, [['role' => 'system', 'content' => 'Convert the user request into a concise English video search query. Return only the query, no explanation. Do not add facts.'], ['role' => 'user', 'content' => $query]]);
-            $query = mb_substr(trim($out['text']), 0, 200);
+            $criteria = $search->intent($v['prompt'], $ai->discoveryIntent($r->user(), $a->llm_model, $v['prompt']));
         }
 
-        return ['query' => $query, ...$search->search($query, $v['platform'], true)];
+        return ['query' => $criteria['query'], ...$search->search($criteria['query'], $v['platform'], true, $criteria)];
     }
 
     public function projects(Request $r): mixed
@@ -100,8 +99,12 @@ class WorkspaceController extends Controller
 
     public function createProject(Request $r): mixed
     {
-        $v = $r->validate(['title' => 'required|string|max:255', 'assistant_id' => ['required', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)], 'source' => 'required|in:upload,youtube,dailymotion', 'source_id' => 'nullable|string|max:80|regex:/^[a-zA-Z0-9_-]+$/', 'transcript' => 'nullable|string|max:100000', 'format' => 'required|in:vertical,landscape', 'target_seconds' => 'required|integer|between:15,600']);
+        $v = $r->validate(['title' => 'required|string|max:255', 'assistant_id' => ['required', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)], 'source' => 'required|in:upload,youtube,bilibili', 'source_id' => 'nullable|string|max:80|regex:/^[a-zA-Z0-9_-]+$/', 'transcript' => 'nullable|string|max:100000', 'format' => 'required|in:vertical,landscape', 'target_seconds' => 'required|integer|between:15,600']);
         if ($v['source'] !== 'upload' && empty($v['source_id'])) {
+            throw ValidationException::withMessages(['source_id' => __('app.choose_a_video_first')]);
+        }
+
+        if ($v['source'] === 'bilibili' && ! preg_match('/^BV[a-zA-Z0-9]{10}$/', $v['source_id'])) {
             throw ValidationException::withMessages(['source_id' => __('app.choose_a_video_first')]);
         }
 
