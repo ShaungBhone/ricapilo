@@ -118,4 +118,4 @@ Back up PostgreSQL, the media volume, and APP_KEY securely together. The rendere
 
 ## Open-source scope
 
-This repository contains the open-source application only. No premium code, billing, editor scaffolding, or feature gates are included. See LICENSE and SECURITY.md. Source repository: [ShaungBhone/ricapilo](https://github.com/ShaungBhone/ricapilo).
+This repository contains the open-source application only. See LICENSE and SECURITY.md. Source repository: [ShaungBhone/ricapilo](https://github.com/ShaungBhone/ricapilo).
