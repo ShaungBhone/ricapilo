@@ -5,7 +5,7 @@ export default function Page() {
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-8 bg-muted/40 p-6">
       <Link href="/" className="flex items-center gap-2 text-xl font-semibold">
-        <AudioLines /> Recap
+        <AudioLines /> Ricapilo
       </Link>
       <div className="w-full max-w-sm">
         <LoginForm mode="login" />

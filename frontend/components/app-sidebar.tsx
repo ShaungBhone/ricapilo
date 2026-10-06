@@ -51,7 +51,7 @@ export function AppSidebar({ user }: { user: User }) {
                 <AudioLines />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Recap</span>
+                <span className="truncate font-semibold">Ricapilo</span>
                 <span className="truncate text-xs">သင့်ဇာတ်လမ်း၊ သင့်အသံ</span>
               </div>
             </SidebarMenuButton>

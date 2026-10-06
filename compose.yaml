@@ -1,6 +1,6 @@
 name: recap
 x-app-env: &app-env
-  APP_NAME: Recap
+  APP_NAME: Ricapilo
   APP_ENV: local
   APP_DEBUG: "false"
   APP_KEY: ${APP_KEY:?Run scripts/setup.sh first}

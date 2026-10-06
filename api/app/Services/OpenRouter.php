@@ -20,7 +20,7 @@ class OpenRouter
             throw ValidationException::withMessages(['key' => 'Connect your OpenRouter key in Settings.']);
         }
 
-        return Http::baseUrl('https://openrouter.ai/api/v1')->withToken($credential->secret)->acceptJson()->timeout(90)->connectTimeout(15)->withHeaders(['HTTP-Referer' => config('recap.frontend_url'), 'X-Title' => 'Recap']);
+        return Http::baseUrl('https://openrouter.ai/api/v1')->withToken($credential->secret)->acceptJson()->timeout(90)->connectTimeout(15)->withHeaders(['HTTP-Referer' => config('recap.frontend_url'), 'X-Title' => 'Ricapilo']);
     }
 
     public function models(): array

@@ -6,7 +6,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 export const metadata: Metadata = {
-  title: { default: "Recap — မြန်မာ AI", template: "%s | Recap" },
+  title: { default: "Ricapilo — မြန်မာ AI", template: "%s | Ricapilo" },
   description:
     "ဗီဒီယိုများ ရှာဖွေပြီး မြန်မာဘာသာဖြင့် အနှစ်ချုပ်နှင့် အသံဖန်တီးပါ။",
 }

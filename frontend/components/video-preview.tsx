@@ -25,7 +25,7 @@ function CaptionPreview({
         justifyContent: "space-between",
       }}
     >
-      <div style={{ fontSize: 26 }}>RECAP</div>
+      <div style={{ fontSize: 26 }}>RICAPILO</div>
       <div style={{ fontSize: 44, fontWeight: 600, lineHeight: 1.8 }}>
         {title}
       </div>

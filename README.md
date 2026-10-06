@@ -1,4 +1,4 @@
-# Recap
+# Ricapilo
 
 An open-source Burmese AI recap workspace: Laravel 13 API, Next.js 16 frontend, and an isolated FFmpeg video renderer. Uses Bun, Docker Compose, Laravel Boost, and shadcn preset `b7Br6guwa` with the `login-03` and `sidebar-07` blocks.
 
@@ -118,4 +118,4 @@ Back up PostgreSQL, the media volume, and APP_KEY securely together. The rendere
 
 ## Open-source scope
 
-This repository contains the open-source application only. No premium code, billing, editor scaffolding, or feature gates are included. See LICENSE, CONTRIBUTING.md, SECURITY.md, and THIRD_PARTY.md. A public GitHub destination has not been configured.
+This repository contains the open-source application only. No premium code, billing, editor scaffolding, or feature gates are included. See LICENSE and SECURITY.md. Source repository: [ShaungBhone/ricapilo](https://github.com/ShaungBhone/ricapilo).
