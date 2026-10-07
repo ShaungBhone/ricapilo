@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardAction,
   CardContent,
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -31,6 +32,15 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectGroup,
+  SelectLabel,
+  SelectItem,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetTrigger,
@@ -86,11 +96,95 @@ function toDraft(a: Assistant): Draft {
   };
 }
 
+const RECOMMENDED_TEXT_PATTERNS = [
+  /^openai\/(gpt-4o|gpt-4-turbo|chatgpt-4o|o1|o3)/i,
+  /^google\/gemini/i,
+  /^anthropic\/claude-3/i,
+  /^meta-llama\/llama-3/i,
+  /^qwen\/qwen-2\.5/i,
+  /^deepseek\/deepseek/i,
+  /^test\//i,
+];
+
+function isRecommendedModel(model: Model, currentSelectedId?: string): boolean {
+  if (currentSelectedId && model.id === currentSelectedId) {
+    return true;
+  }
+  if (model.kind === "transcription" || model.kind === "speech") {
+    return true;
+  }
+  return RECOMMENDED_TEXT_PATTERNS.some((pattern) => pattern.test(model.id));
+}
+
+function getProviderLabel(modelId: string): string {
+  const parts = modelId.split("/");
+  if (parts.length < 2) return "Other";
+  const raw = parts[0].toLowerCase();
+  const knownProviders: Record<string, string> = {
+    openai: "OpenAI",
+    google: "Google",
+    anthropic: "Anthropic",
+    "meta-llama": "Meta",
+    meta: "Meta",
+    deepseek: "DeepSeek",
+    qwen: "Qwen",
+    mistralai: "Mistral",
+    microsoft: "Microsoft",
+    cohere: "Cohere",
+    elevenlabs: "ElevenLabs",
+    amazon: "Amazon",
+    xai: "xAI",
+  };
+  if (knownProviders[raw]) return knownProviders[raw];
+  return raw
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function groupModelsByProvider(
+  options: Model[],
+): { provider: string; models: Model[] }[] {
+  const groups = new Map<string, Model[]>();
+  for (const m of options) {
+    const provider = getProviderLabel(m.id);
+    const existing = groups.get(provider);
+    if (existing) {
+      existing.push(m);
+    } else {
+      groups.set(provider, [m]);
+    }
+  }
+
+  const priority = [
+    "OpenAI",
+    "Google",
+    "Anthropic",
+    "Meta",
+    "DeepSeek",
+    "Qwen",
+  ];
+  return Array.from(groups.entries())
+    .map(([provider, models]) => ({
+      provider,
+      models: [...models].sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => {
+      const idxA = priority.indexOf(a.provider);
+      const idxB = priority.indexOf(b.provider);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.provider.localeCompare(b.provider);
+    });
+}
+
 export function AssistantEditor({ assistantId }: { assistantId: string }) {
   const t = useTranslations();
   const router = useRouter();
   const isNew = assistantId === "new";
   const [draft, setDraft] = useState<Draft>(initial);
+  const [showAllModels, setShowAllModels] = useState(false);
   const [baseline, setBaseline] = useState<Draft>(initial);
   const [saved, setSaved] = useState<Assistant | null>(null);
   const [models, setModels] = useState<Model[]>([]);
@@ -553,8 +647,23 @@ export function AssistantEditor({ assistantId }: { assistantId: string }) {
                       <CardHeader>
                         <CardTitle>{t("assistants.modelsVoice")}</CardTitle>
                         <CardDescription>
-                          {t("assistants.youCanChangeModelAndVoiceIdsAt")}
+                          {showAllModels
+                            ? t("assistants.showingAllModels")
+                            : t("assistants.showingRecommendedModels")}
                         </CardDescription>
+                        <CardAction>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAllModels((v) => !v)}
+                          >
+                            <SlidersHorizontal className="size-3.5" />
+                            {showAllModels
+                              ? t("assistants.showRecommendedOnly")
+                              : t("assistants.showAllModels")}
+                          </Button>
+                        </CardAction>
                       </CardHeader>
                       <CardContent>
                         <FieldGroup>
@@ -577,39 +686,69 @@ export function AssistantEditor({ assistantId }: { assistantId: string }) {
                               },
                             ] as const
                           ).map(({ key, kind, label }) => {
-                            const options = models.filter(
+                            const available = models.filter(
                               (m) => m.kind === kind,
                             );
+                            let options = showAllModels
+                              ? available
+                              : available.filter((m) =>
+                                  isRecommendedModel(m, draft[key]),
+                                );
+                            if (options.length === 0 && available.length > 0) {
+                              options = available;
+                            }
                             const unavailable =
                               draft[key] &&
-                              !options.some((m) => m.id === draft[key]);
+                              !available.some((m) => m.id === draft[key]);
+                            const groupedOptions =
+                              groupModelsByProvider(options);
                             return (
                               <Field key={key}>
                                 <FieldLabel htmlFor={key}>
                                   {t(label)}
                                 </FieldLabel>
-                                <NativeSelect
-                                  id={key}
+                                <Select
+                                  name={key}
                                   required
-                                  value={draft[key]}
-                                  onChange={(e) => change(key, e.target.value)}
+                                  value={draft[key] || undefined}
+                                  onValueChange={(value) =>
+                                    change(key, value ?? "")
+                                  }
                                 >
-                                  <NativeSelectOption value="">
-                                    {t("assistants.chooseAModel")}
-                                  </NativeSelectOption>
-                                  {unavailable && (
-                                    <NativeSelectOption value={draft[key]}>
-                                      {t("assistants.unavailableModel", {
-                                        model: draft[key],
-                                      })}
-                                    </NativeSelectOption>
-                                  )}
-                                  {options.map((m) => (
-                                    <NativeSelectOption key={m.id} value={m.id}>
-                                      {m.name}
-                                    </NativeSelectOption>
-                                  ))}
-                                </NativeSelect>
+                                  <SelectTrigger id={key} className="w-full">
+                                    <SelectValue
+                                      placeholder={t("assistants.chooseAModel")}
+                                    >
+                                      {(value: string | null) =>
+                                        value
+                                          ? (models.find((m) => m.id === value)
+                                              ?.name ?? value)
+                                          : t("assistants.chooseAModel")
+                                      }
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {unavailable && (
+                                      <SelectItem value={draft[key]}>
+                                        {t("assistants.unavailableModel", {
+                                          model: draft[key],
+                                        })}
+                                      </SelectItem>
+                                    )}
+                                    {groupedOptions.map((group) => (
+                                      <SelectGroup key={group.provider}>
+                                        <SelectLabel>
+                                          {group.provider}
+                                        </SelectLabel>
+                                        {group.models.map((m) => (
+                                          <SelectItem key={m.id} value={m.id}>
+                                            {m.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectGroup>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </Field>
                             );
                           })}
