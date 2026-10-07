@@ -197,6 +197,6 @@ return [
     |
     */
 
-    'attributes' => [],
+    'attributes' => ['youtube_key' => 'video discovery API key'],
 
 ];

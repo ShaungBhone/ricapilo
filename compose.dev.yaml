@@ -1,5 +1,6 @@
 services:
   frontend:
+    image: recap-frontend-dev
     build:
       target: development
     environment:

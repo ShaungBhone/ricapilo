@@ -46,6 +46,11 @@
     "yourStoryYourVoice": "သင့်ဇာတ်လမ်း၊ သင့်အသံ",
     "workspace": "ဖန်တီးမှုနေရာ",
     "changeTheme": "အရောင်ပြောင်းရန်",
+    "openProfileMenu": "ပရိုဖိုင် မီနူးဖွင့်ရန်",
+    "appearance": "အသွင်အပြင်",
+    "light": "အလင်း",
+    "dark": "အမှောင်",
+    "system": "စနစ်အတိုင်း",
     "lightDark": "အလင်း / အမှောင်",
     "signOut": "ထွက်ရန်",
     "signOutOfYourAccount": "အကောင့်မှ ထွက်ရန်",
@@ -58,8 +63,8 @@
     "resendVerificationEmail": "အတည်ပြုအီးမေးလ် ပြန်ပို့ရန်",
     "recentPopularVideos": "လတ်တလော လူကြိုက်များ ဗီဒီယိုများ",
     "giveMeViralVideosToRecap": "အနှစ်ချုပ်ရန် လူကြိုက်များ ဗီဒီယိုများ ရှာပေးပါ",
-    "popularityNote": "လူကြိုက်များမှုကို ပလက်ဖောင်းစာရင်းနှင့် ကြည့်ရှုမှုအရ သတ်မှတ်ထားပါသည်။ ဗီဒီယိုတစ်ခု ရေပန်းစားမည်ဟု အာမခံခြင်း မဟုတ်ပါ။",
-    "accessNote": "အနှစ်ချုပ် ဖန်တီးချိန်တွင် မီဒီယာရယူနိုင်မှုကို စစ်ဆေးပါမည်။ ရယူ၍ မရပါက ဖိုင်တင်ခြင်း သို့မဟုတ် စာသားကူးထည့်ခြင်း ပြုလုပ်နိုင်ပါသည်။",
+    "popularityNote": "လူကြိုက်များမှုကို မကြာသေးမီက လှုပ်ရှားမှုများနှင့် ကြည့်ရှုမှုအရေအတွက်များအပေါ် အခြေခံထားပါသည်။ ဗီဒီယိုတစ်ခု ရေပန်းစားလာမည်ဟု အာမမခံပါ။",
+    "accessNote": "ဗီဒီယိုကို အသုံးပြု၍ မရပါက ဖိုင်တင်နိုင်သည် သို့မဟုတ် ၎င်း၏စာသားမှတ်တမ်းကို ထည့်နိုင်သည်။",
     "durationSeconds": "{count} စက္ကန့်"
   },
   "assistants": {
@@ -87,7 +92,35 @@
     "previewVoice": "အသံ နားထောင်ရန်",
     "edit": "ပြင်ဆင်ရန်",
     "deleteThisAssistant": "ဤလက်ထောက်ကို ဖျက်မလား။",
-    "delete": "ဖျက်ရန်"
+    "delete": "ဖျက်ရန်",
+    "loading": "လက်ထောက်များကို ဖွင့်နေသည်…",
+    "filters": "စစ်ထုတ်ရန်",
+    "all": "လက်ထောက်အားလုံး",
+    "search": "လက်ထောက်များကို ရှာဖွေရန်…",
+    "agent": "လက်ထောက်",
+    "actions": "လုပ်ဆောင်ချက်များ",
+    "actionsFor": "{name} အတွက် လုပ်ဆောင်ချက်များ",
+    "noMatches": "ကိုက်ညီသော လက်ထောက် မရှိပါ",
+    "adjustFilters": "အခြားစာသား သို့မဟုတ် အခြေအနေဖြင့် ရှာဖွေပါ။",
+    "clearFilters": "စစ်ထုတ်မှုများကို ရှင်းလင်းရန်",
+    "overview": "ခြုံငုံသုံးသပ်ချက်",
+    "allSettings": "ဆက်တင်အားလုံး",
+    "modelsVoice": "မော်ဒယ်နှင့် အသံ",
+    "messages": "မက်ဆေ့ချ်များ",
+    "settings": "လက်ထောက် ဆက်တင်များ",
+    "backToList": "လက်ထောက်များသို့ ပြန်သွားရန်",
+    "notFound": "ဤလက်ထောက်ကို ရှာမတွေ့ပါ။",
+    "discardChanges": "မသိမ်းဆည်းရသေးသော ပြောင်းလဲမှုများကို ပယ်ဖျက်မလား။",
+    "unsaved": "မသိမ်းဆည်းရသေးပါ",
+    "overviewDescription": "လက်ထောက်၏ အမည်၊ ညွှန်ကြားချက်နှင့် အသုံးပြုနိုင်မှုကို သတ်မှတ်ပါ။",
+    "messagesDescription": "ပထမနှုတ်ဆက်စကားနှင့် စကားပြောပြီးနောက် ခေတ္တရပ်ချိန်ကို သတ်မှတ်ပါ။",
+    "unavailableModel": "{model} (မရရှိနိုင်ပါ)",
+    "confirm": "အတည်ပြုရန်",
+    "resizePanels": "လမ်းညွှန်နှင့် အကြောင်းအရာအကွက် အရွယ်အစားပြောင်းရန်",
+    "columns": "ကော်လံများ",
+    "previous": "ရှေ့သို့",
+    "next": "နောက်သို့",
+    "tablePage": "စာမျက်နှာ {page} / {total} · လက်ထောက် {count} ခု"
   },
   "authentication": {
     "name": "အမည်",
@@ -110,11 +143,11 @@
   },
   "administration": {
     "save": "သိမ်းရန်",
-    "youtubeConnected": "YouTube ချိတ်ဆက်ပြီးပါပြီ။",
-    "aYoutubeKeyIsRequired": "YouTube key ထည့်ရန် လိုပါသည်။",
     "saved": "သိမ်းပြီးပါပြီ။",
-    "youtubeDataApiKey": "YouTube Data API key",
-    "disabledModelIdsOnePerLine": "ပိတ်ထားမည့် model IDs (တစ်ကြောင်းစီ)"
+    "disabledModelIdsOnePerLine": "ပိတ်ထားမည့် model IDs (တစ်ကြောင်းစီ)",
+    "videoDiscoveryConnected": "ဗီဒီယိုရှာဖွေမှု ချိတ်ဆက်ပြီးပါပြီ။",
+    "videoDiscoveryKeyRequired": "ဗီဒီယိုရှာဖွေမှု API key ထည့်ရန် လိုပါသည်။",
+    "videoDiscoveryApiKey": "ဗီဒီယိုရှာဖွေမှု API key"
   },
   "projects": {
     "newProject": "ပရောဂျက်အသစ်",
@@ -162,9 +195,15 @@
     "ready": "အဆင်သင့်",
     "failed": "မအောင်မြင်ပါ",
     "script_ready": "ဇာတ်ညွှန်း အဆင်သင့်",
-    "audio_ready": "အသံ အဆင်သင့်"
+    "audio_ready": "အသံ အဆင်သင့်",
+    "onlineVideo": "အွန်လိုင်းဗီဒီယို",
+    "uploadedVideo": "တင်ထားသောဗီဒီယို"
   },
   "conversations": {
+    "noConversationSelected": "စကားဝိုင်း မရွေးချယ်ရသေးပါ",
+    "selectConversation": "စာများကို ကြည့်ရန် စာရင်းမှ စကားဝိုင်းတစ်ခုကို ရွေးချယ်ပါ။",
+    "backToConversations": "စကားဝိုင်းစာရင်းသို့ ပြန်သွားရန်",
+    "resizePanels": "စကားဝိုင်းစာရင်းနှင့် စာများ၏ အကျယ်ကို ချိန်ညှိရန်",
     "assistant": "လက်ထောက်",
     "choose": "ရွေးချယ်ပါ",
     "noConversationsYet": "စကားဝိုင်း မရှိသေးပါ",
@@ -243,12 +282,25 @@
     "apiCannotReadAudioDuration": "အသံကြာချိန်ကို ဖတ်၍မရပါ။",
     "apiSignedOut": "အကောင့်မှ ထွက်ပြီးပါပြီ။",
     "apiVerificationEmailSent": "အတည်ပြုအီးမေးလ် ပို့ပြီးပါပြီ။",
-    "apiAnAdministratorMustAddAYoutubeApiKeyToSearchYoutube": "YouTube ရှာဖွေရန် စီမံခန့်ခွဲသူက API key ထည့်ရန် လိုပါသည်။",
-    "apiYoutubeIsTemporarilyUnavailable": "YouTube ကို လတ်တလော ချိတ်ဆက်၍မရပါ။",
+    "apiAnAdministratorMustAddAYoutubeApiKeyToSearchYoutube": "ဗီဒီယိုရှာဖွေမှုကို စီမံခန့်ခွဲသူက ပြင်ဆင်သတ်မှတ်ရန် လိုပါသည်။",
+    "apiYoutubeIsTemporarilyUnavailable": "ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။",
     "apiDailymotionIsTemporarilyUnavailable": "Dailymotion ကို လတ်တလော ချိတ်ဆက်၍မရပါ။",
-    "apiBilibiliIsTemporarilyUnavailable": "Bilibili ကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။",
-    "apiFromThePlatformPopularityFeed": "ပလက်ဖောင်း၏ လူကြိုက်များစာရင်းမှ ဖြစ်ပါသည်။",
+    "apiBilibiliIsTemporarilyUnavailable": "ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။",
+    "apiFromThePlatformPopularityFeed": "မကြာသေးမီက လူကြိုက်များနေသည်။",
     "apiMatchesYourTopic": "သင့်အကြောင်းအရာနှင့် ကိုက်ညီပါသည်။",
-    "apiRegionalChartUnavailableShowingGlobalResults": "ဒေသအလိုက် လူကြိုက်များစာရင်း မရနိုင်သဖြင့် ကမ္ဘာတစ်ဝန်း ရလဒ်များကို ပြထားပါသည်။"
+    "apiRegionalChartUnavailableShowingGlobalResults": "ပိုမိုကျယ်ပြန့်သော လူကြိုက်များသည့် ရလဒ်များကို ပြသထားပါသည်။",
+    "apiVideoSearchUnavailablePleaseTryAgain": "ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။ ထပ်မံကြိုးစားပါ။"
+  },
+  "profile": {
+    "title": "ကိုယ်ရေးအချက်အလက်",
+    "accountDetails": "အကောင့်အချက်အလက်များ",
+    "accountDescription": "သင့်အကောင့်အချက်အလက်များနှင့် အီးမေးလ်အတည်ပြုမှုအခြေအနေ။",
+    "name": "အမည်",
+    "email": "အီးမေးလ်",
+    "emailVerification": "အီးမေးလ်အတည်ပြုမှု",
+    "verified": "အတည်ပြုပြီး",
+    "notVerified": "အတည်မပြုရသေး",
+    "sending": "ပို့နေပါသည်…",
+    "resendLimitReached": "အတည်ပြုအီးမေးလ် တောင်းဆိုမှုများလွန်းပါသည်။ တစ်မိနစ်စောင့်ပြီး ထပ်မံကြိုးစားပါ။"
   }
 }

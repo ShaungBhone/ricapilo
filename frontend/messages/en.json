@@ -46,6 +46,11 @@
     "yourStoryYourVoice": "Your story, your voice",
     "workspace": "Workspace",
     "changeTheme": "Change theme",
+    "openProfileMenu": "Open profile menu",
+    "appearance": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
     "lightDark": "Light / Dark",
     "signOut": "Sign out",
     "signOutOfYourAccount": "Sign out of your account",
@@ -58,8 +63,8 @@
     "resendVerificationEmail": "Resend verification email",
     "recentPopularVideos": "Recent popular videos",
     "giveMeViralVideosToRecap": "Give me viral videos to recap",
-    "popularityNote": "Popularity uses platform feeds and reported views. It does not guarantee a video will go viral.",
-    "accessNote": "Media access is checked when generating your recap. You can upload a file or paste a transcript if access fails.",
+    "popularityNote": "Popularity is based on recent activity and reported views. It does not guarantee a video will go viral.",
+    "accessNote": "If a video cannot be used, you can upload a file or paste its transcript.",
     "durationSeconds": "{count} seconds"
   },
   "assistants": {
@@ -87,7 +92,35 @@
     "previewVoice": "Preview voice",
     "edit": "Edit",
     "deleteThisAssistant": "Delete this assistant?",
-    "delete": "Delete"
+    "delete": "Delete",
+    "loading": "Loading assistants…",
+    "filters": "Filters",
+    "all": "All assistants",
+    "search": "Search assistants…",
+    "agent": "Agent",
+    "actions": "Actions",
+    "actionsFor": "Actions for {name}",
+    "noMatches": "No matching assistants",
+    "adjustFilters": "Try another search or status filter.",
+    "clearFilters": "Clear filters",
+    "overview": "Overview",
+    "allSettings": "All Settings",
+    "modelsVoice": "Models & Voice",
+    "messages": "Messages",
+    "settings": "Assistant settings",
+    "backToList": "Back to assistants",
+    "notFound": "This assistant could not be found.",
+    "discardChanges": "Discard your unsaved changes?",
+    "unsaved": "Unsaved changes",
+    "overviewDescription": "Configure your assistant’s identity, instructions, and availability.",
+    "messagesDescription": "Set the opening greeting and the pause after speaking.",
+    "unavailableModel": "{model} (unavailable)",
+    "confirm": "Confirm",
+    "resizePanels": "Resize navigation and content",
+    "columns": "Columns",
+    "previous": "Previous",
+    "next": "Next",
+    "tablePage": "Page {page} of {total} · {count, plural, one {# assistant} other {# assistants}}"
   },
   "authentication": {
     "name": "Name",
@@ -110,11 +143,11 @@
   },
   "administration": {
     "save": "Save",
-    "youtubeConnected": "YouTube connected.",
-    "aYoutubeKeyIsRequired": "A YouTube key is required.",
     "saved": "Saved.",
-    "youtubeDataApiKey": "YouTube Data API key",
-    "disabledModelIdsOnePerLine": "Disabled model IDs (one per line)"
+    "disabledModelIdsOnePerLine": "Disabled model IDs (one per line)",
+    "videoDiscoveryConnected": "Video discovery connected.",
+    "videoDiscoveryKeyRequired": "A video discovery API key is required.",
+    "videoDiscoveryApiKey": "Video discovery API key"
   },
   "projects": {
     "newProject": "New project",
@@ -162,9 +195,15 @@
     "ready": "Ready",
     "failed": "Failed",
     "script_ready": "Script ready",
-    "audio_ready": "Audio ready"
+    "audio_ready": "Audio ready",
+    "onlineVideo": "Online video",
+    "uploadedVideo": "Uploaded video"
   },
   "conversations": {
+    "noConversationSelected": "No conversation selected",
+    "selectConversation": "Select a conversation from the list to view messages.",
+    "backToConversations": "Back to conversations",
+    "resizePanels": "Resize conversation list and messages",
     "assistant": "Assistant",
     "choose": "Choose",
     "noConversationsYet": "No conversations yet",
@@ -243,12 +282,25 @@
     "apiCannotReadAudioDuration": "Cannot read audio duration.",
     "apiSignedOut": "Signed out",
     "apiVerificationEmailSent": "Verification email sent.",
-    "apiAnAdministratorMustAddAYoutubeApiKeyToSearchYoutube": "An administrator must add a YouTube API key to search YouTube.",
-    "apiYoutubeIsTemporarilyUnavailable": "YouTube is temporarily unavailable.",
+    "apiAnAdministratorMustAddAYoutubeApiKeyToSearchYoutube": "Video discovery needs to be configured by an administrator.",
+    "apiYoutubeIsTemporarilyUnavailable": "Video search is temporarily unavailable.",
     "apiDailymotionIsTemporarilyUnavailable": "Dailymotion is temporarily unavailable.",
-    "apiBilibiliIsTemporarilyUnavailable": "Bilibili is temporarily unavailable.",
-    "apiFromThePlatformPopularityFeed": "From the platform popularity feed.",
+    "apiBilibiliIsTemporarilyUnavailable": "Video search is temporarily unavailable.",
+    "apiFromThePlatformPopularityFeed": "Popular recently.",
     "apiMatchesYourTopic": "Matches your topic.",
-    "apiRegionalChartUnavailableShowingGlobalResults": "Regional popularity chart unavailable; showing global results."
+    "apiRegionalChartUnavailableShowingGlobalResults": "Showing broader popular results.",
+    "apiVideoSearchUnavailablePleaseTryAgain": "Video search is temporarily unavailable. Please try again."
+  },
+  "profile": {
+    "title": "Profile",
+    "accountDetails": "Account details",
+    "accountDescription": "Your account information and email verification status.",
+    "name": "Name",
+    "email": "Email",
+    "emailVerification": "Email verification",
+    "verified": "Verified",
+    "notVerified": "Not verified",
+    "sending": "Sending…",
+    "resendLimitReached": "Too many verification requests. Please wait a minute and try again."
   }
 }

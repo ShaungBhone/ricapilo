@@ -16,15 +16,18 @@ import {
   MessageHeader,
 } from "@/components/ui/message";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { cn } from "cn";
 export function Transcript({
   messages,
+  className,
 }: {
   messages: Conversation["messages"];
+  className?: string;
 }) {
   const t = useTranslations();
 
   return (
-    <div className="h-[420px]">
+    <div className={cn("h-[420px]", className)}>
       <MessageScrollerProvider autoScroll>
         <MessageScroller>
           <MessageScrollerViewport>

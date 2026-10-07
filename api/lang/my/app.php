@@ -1,10 +1,11 @@
 <?php
 
 return [
-    'bilibili_is_temporarily_unavailable' => 'Bilibili ကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။',
-    'from_the_platform_popularity_feed' => 'ပလက်ဖောင်း၏ လူကြိုက်များစာရင်းမှ ဖြစ်ပါသည်။',
+    'video_search_unavailable_please_try_again' => 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။ ထပ်မံကြိုးစားပါ။',
+    'bilibili_is_temporarily_unavailable' => 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။',
+    'from_the_platform_popularity_feed' => 'မကြာသေးမီက လူကြိုက်များနေသည်။',
     'matches_your_topic' => 'သင့်အကြောင်းအရာနှင့် ကိုက်ညီပါသည်။',
-    'regional_chart_unavailable_showing_global_results' => 'ဒေသအလိုက် လူကြိုက်များစာရင်း မရနိုင်သဖြင့် ကမ္ဘာတစ်ဝန်း ရလဒ်များကို ပြထားပါသည်။',
+    'regional_chart_unavailable_showing_global_results' => 'ပိုမိုကျယ်ပြန့်သော လူကြိုက်များသည့် ရလဒ်များကို ပြသထားပါသည်။',
 
     'email_or_password_is_incorrect' => 'အီးမေးလ် သို့မဟုတ် စကားဝှက် မမှန်ပါ။',
     'if_that_email_is_registered_a_reset_link_has_been_sent' => 'အကောင့်ရှိပါက စကားဝှက်ပြန်သတ်မှတ်ရန် အီးမေးလ် ပို့ပြီးပါပြီ။',
@@ -41,7 +42,7 @@ return [
     'cannot_read_audio_duration' => 'အသံကြာချိန်ကို ဖတ်၍မရပါ။',
     'signed_out' => 'အကောင့်မှ ထွက်ပြီးပါပြီ။',
     'verification_email_sent' => 'အတည်ပြုအီးမေးလ် ပို့ပြီးပါပြီ။',
-    'an_administrator_must_add_a_youtube_api_key_to_search_youtube' => 'YouTube ရှာဖွေရန် စီမံခန့်ခွဲသူက API key ထည့်ရန် လိုပါသည်။',
-    'youtube_is_temporarily_unavailable' => 'YouTube ကို လတ်တလော ချိတ်ဆက်၍မရပါ။',
+    'an_administrator_must_add_a_youtube_api_key_to_search_youtube' => 'ဗီဒီယိုရှာဖွေမှုကို စီမံခန့်ခွဲသူက ပြင်ဆင်သတ်မှတ်ရန် လိုပါသည်။',
+    'youtube_is_temporarily_unavailable' => 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။',
     'dailymotion_is_temporarily_unavailable' => 'Dailymotion ကို လတ်တလော ချိတ်ဆက်၍မရပါ။',
 ];

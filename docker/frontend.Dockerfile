@@ -5,6 +5,7 @@ COPY frontend/package.json frontend/bun.lock ./
 RUN bun install --frozen-lockfile
 
 FROM dependencies AS development
+COPY frontend/ .
 ENV NODE_ENV=development NEXT_TELEMETRY_DISABLED=1
 EXPOSE 3000
 CMD ["sh", "-c", "bun install --frozen-lockfile && bun run dev --webpack --hostname 0.0.0.0"]
@@ -14,7 +15,7 @@ COPY frontend/ .
 ARG API_INTERNAL_URL=http://api
 ENV API_INTERNAL_URL=$API_INTERNAL_URL NEXT_TELEMETRY_DISABLED=1
 RUN bun run build
-FROM node:24-bookworm-slim
+FROM node:24-bookworm-slim AS production
 WORKDIR /app
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 NEXT_TELEMETRY_DISABLED=1
 COPY --from=build --chown=node:node /app/.next/standalone ./

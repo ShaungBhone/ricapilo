@@ -7,6 +7,15 @@ import my from "@/messages/my.json";
 import en from "@/messages/en.json";
 
 describe("translation catalogs", () => {
+  test("interface messages do not name video source providers", () => {
+    for (const catalog of [en, my]) {
+      for (const entries of Object.values(catalog)) {
+        for (const message of Object.values(entries)) {
+          assert.doesNotMatch(message, /youtube|bilibili/i);
+        }
+      }
+    }
+  });
   test("both languages have the same keys and valid ICU messages", () => {
     assert.deepEqual(Object.keys(my).sort(), Object.keys(en).sort());
     for (const group of Object.keys(my) as (keyof typeof my)[]) {
@@ -45,9 +54,14 @@ describe("translation catalogs", () => {
         },
       });
       for (const [group, entries] of Object.entries(messages)) {
-        for (const key of Object.keys(entries)) {
+        for (const [key, message] of Object.entries(entries)) {
           assert.notEqual(
             t(`${group}.${key}` as Parameters<typeof t>[0], {
+              ...Object.fromEntries(
+                [...message.matchAll(/\{([a-zA-Z][a-zA-Z0-9_]*)(?:,|\})/g)].map(
+                  (match) => [match[1], "example"],
+                ),
+              ),
               count: 2,
               page: 1,
               total: 5,
@@ -77,7 +91,7 @@ describe("translation catalogs", () => {
     assert.equal(translated, "ရင်းမြစ်တွင် အသံမရှိပါ။");
     assert.equal(localizeMessage(translated, "en"), message);
     const warnings =
-      "YouTube is temporarily unavailable.\nDailymotion is temporarily unavailable.";
+      "Video search is temporarily unavailable.\nVideo search is temporarily unavailable. Please try again.";
     assert.equal(
       localizeMessage(localizeMessage(warnings, "my"), "en"),
       warnings,

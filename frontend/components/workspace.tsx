@@ -2,9 +2,7 @@
 import { useTranslations } from "next-intl";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { TriangleAlert } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { usePathname, useRouter } from "next/navigation";
 import {
   SidebarProvider,
   SidebarInset,
@@ -22,9 +20,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
 
   const router = useRouter();
+  const pathname = usePathname();
+  const fullWidthPage =
+    pathname === "/assistants" ||
+    pathname.startsWith("/assistants/") ||
+    pathname === "/conversations";
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   useEffect(() => {
     api<User>("/auth/me")
       .then(setUser)
@@ -66,34 +68,13 @@ export function Workspace({ children }: { children: React.ReactNode }) {
               <span className="text-sm">{t("workspace.burmeseAiStudio")}</span>
             </div>
           </header>
-          <div className="mx-auto w-full max-w-6xl p-4 md:p-8">
-            {!user.email_verified_at && (
-              <div className="mb-6 flex flex-col gap-3">
-                <Alert variant="warning">
-                  <TriangleAlert aria-hidden="true" />
-                  <AlertTitle>{t("shared.notice")}</AlertTitle>
-                  <AlertDescription>
-                    {user.email_verification_required
-                      ? t("workspace.verifyYourEmailBeforeUsingAi")
-                      : t("workspace.youCanVerifyYourEmailAiIsAlso")}
-                  </AlertDescription>
-                </Alert>
-                <Button
-                  variant="outline"
-                  className="w-fit"
-                  onClick={() =>
-                    api("/email/resend", { method: "POST" })
-                      .then(() =>
-                        setNotice(t("workspace.verificationEmailSent")),
-                      )
-                      .catch((e) => setNotice(e.message))
-                  }
-                >
-                  {t("workspace.resendVerificationEmail")}
-                </Button>
-              </div>
-            )}
-            <Feedback message={notice} />
+          <div
+            className={
+              fullWidthPage
+                ? "flex h-[calc(100svh-4rem)] min-h-0 w-full flex-col overflow-hidden"
+                : "mx-auto w-full max-w-6xl p-4 md:p-8"
+            }
+          >
             {children}
           </div>
         </SidebarInset>

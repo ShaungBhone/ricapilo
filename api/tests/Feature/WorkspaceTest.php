@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\URL;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -53,11 +54,11 @@ class WorkspaceTest extends TestCase
     {
         config(['recap.email_verification_required' => false]);
         Notification::fake();
-        Http::fake(['api.dailymotion.com/*' => Http::response(['list' => []])]);
+        Process::fake(['*' => Process::result(output: json_encode(['ok' => true, 'items' => []]))]);
         $this->postJson('/api/v1/auth/register', ['name' => 'New user', 'email' => 'new@example.com', 'password' => 'GoodPassword123', 'password_confirmation' => 'GoodPassword123'])->assertCreated()->assertJsonPath('email_verified_at', null);
         Notification::assertNothingSent();
         $this->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('email_verification_required', false);
-        $this->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'dailymotion'])->assertOk();
+        $this->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'bilibili'])->assertOk();
     }
 
     public function test_unverified_user_can_be_promoted_when_email_verification_is_optional(): void
@@ -182,14 +183,6 @@ class WorkspaceTest extends TestCase
         $this->assertSame('မြန်မာ အနှစ်ချုပ်', $p->fresh()->script);
         $this->assertSame('script_ready', $p->fresh()->status);
         OpenRouterAgent::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, $p->transcript));
-    }
-
-    public function test_discovery_normalizes_dailymotion_results_and_reports_missing_youtube_key(): void
-    {
-        Http::fake(['api.dailymotion.com/*' => Http::response(['list' => [['id' => 'x123', 'title' => 'Space', 'owner.screenname' => 'Creator', 'views_total' => 99, 'duration' => 30], ['id' => 'long', 'title' => 'Long', 'duration' => 500]]])]);
-        $u = User::factory()->create();
-        $this->actingAs($u)->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'all'])->assertOk()->assertJsonPath('videos.0.platform', 'dailymotion')->assertJsonPath('videos.0.views', 99)->assertJsonCount(1, 'warnings');
-        Http::assertSent(fn ($request) => str_contains($request->url(), 'dailymotion.com') && ! isset($request['duration']));
     }
 
     public function test_text_talk_persists_history_without_exposing_credentials(): void

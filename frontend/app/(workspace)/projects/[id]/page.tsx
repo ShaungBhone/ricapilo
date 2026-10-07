@@ -86,7 +86,14 @@ export default function Detail({
     (!!project &&
       ["queued", "processing", "rendering"].includes(project.status));
   if (!project)
-    return <Feedback message={message || t("authentication.pleaseWait")} />;
+    return (
+      <>
+        <Feedback message={message} />
+        <p role="status" className="text-sm text-muted-foreground">
+          {t("authentication.pleaseWait")}
+        </p>
+      </>
+    );
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">

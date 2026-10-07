@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -28,9 +27,19 @@ class LocalizationTest extends TestCase
     {
         $this->withHeader('Accept-Language', 'en')->postJson('/api/v1/auth/login', ['email' => 'none@example.com', 'password' => 'wrong'])->assertUnprocessable()->assertJsonPath('errors.email.0', 'Email or password is incorrect.');
         $this->withHeader('Accept-Language', 'my')->postJson('/api/v1/auth/login', ['email' => 'none@example.com', 'password' => 'wrong'])->assertUnprocessable()->assertJsonPath('errors.email.0', 'အီးမေးလ် သို့မဟုတ် စကားဝှက် မမှန်ပါ။');
-        Http::fake(['api.dailymotion.com/*' => Http::response(['list' => []])]);
-        $this->actingAs(User::factory()->create())->withHeader('Accept-Language', 'en')->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'all'])->assertOk()->assertJsonPath('warnings.0', 'An administrator must add a YouTube API key to search YouTube.');
-        $this->withHeader('Accept-Language', 'my')->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'all'])->assertOk()->assertJsonPath('warnings.0', 'YouTube ရှာဖွေရန် စီမံခန့်ခွဲသူက API key ထည့်ရန် လိုပါသည်။');
+        $this->actingAs(User::factory()->create())->withHeader('Accept-Language', 'en')->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'youtube'])->assertOk()->assertJsonPath('warnings.0', 'Video search is temporarily unavailable. Please try again.');
+        $this->withHeader('Accept-Language', 'my')->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'youtube'])->assertOk()->assertJsonPath('warnings.0', 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။ ထပ်မံကြိုးစားပါ။');
+    }
+
+    public function test_admin_validation_uses_generic_video_discovery_labels(): void
+    {
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        foreach (['en', 'my'] as $locale) {
+            $response = $this->withHeader('Accept-Language', $locale)->putJson('/api/v1/admin', ['youtube_key' => str_repeat('x', 501), 'disabled_models' => []])->assertUnprocessable();
+            $message = $response->json('errors.youtube_key.0');
+            $this->assertStringContainsString(trans('validation.attributes.youtube_key', [], $locale), $message);
+            $this->assertDoesNotMatchRegularExpression('/youtube|bilibili/i', $message);
+        }
     }
 
     public function test_stored_generation_keys_and_legacy_errors_follow_viewer_locale(): void

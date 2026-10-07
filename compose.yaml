@@ -93,9 +93,11 @@ services:
       timeout: 5s
       retries: 10
   frontend:
+    image: recap-frontend
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
+      target: production
       args:
         API_INTERNAL_URL: http://api
     ports: ["127.0.0.1:3000:3000"]

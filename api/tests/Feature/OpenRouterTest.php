@@ -8,6 +8,7 @@ use App\Models\Assistant;
 use App\Models\Credential;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\DiscoveryIntentAgent;
 use App\Services\Media;
 use App\Services\OpenRouter;
 use App\Services\OpenRouterAgent;
@@ -271,12 +272,13 @@ class OpenRouterTest extends TestCase
 
     public function test_discovery_uses_sdk_query_generation(): void
     {
-        OpenRouterAgent::fake(['space documentaries'])->preventStrayPrompts();
-        Http::fake(['api.dailymotion.com/*' => Http::response(['list' => []])]);
+        DiscoveryIntentAgent::fake([['mode' => 'topic', 'query' => 'space documentaries', 'bilibili_query' => '太空纪录片', 'region' => 'MM', 'days' => 0]])->preventStrayPrompts();
+        Process::fake(['*' => Process::result(output: json_encode(['ok' => true, 'items' => []]))]);
         $user = $this->userWithKey();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        $this->actingAs($user)->postJson('/api/v1/discover', ['assistant_id' => $assistant->id, 'prompt' => 'အာကာသ', 'platform' => 'dailymotion'])->assertOk()->assertJsonPath('query', 'space documentaries');
-        OpenRouterAgent::assertPrompted('အာကာသ');
+        $this->actingAs($user)->postJson('/api/v1/discover', ['assistant_id' => $assistant->id, 'prompt' => 'အာကာသ', 'platform' => 'bilibili'])->assertOk()->assertJsonPath('query', 'space documentaries');
+        DiscoveryIntentAgent::assertPrompted('အာကာသ');
+        Process::assertRan(fn ($process) => $process->command[2] === 'search' && $process->command[3] === '太空纪录片');
     }
 
     public function test_missing_credentials_and_disabled_models_do_not_generate(): void

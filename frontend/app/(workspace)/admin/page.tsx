@@ -22,8 +22,8 @@ export default function Admin() {
         setDisabled(r.disabled_models.join("\n"));
         setMessage(
           r.youtube_configured
-            ? "administration.youtubeConnected"
-            : "administration.aYoutubeKeyIsRequired",
+            ? "administration.videoDiscoveryConnected"
+            : "administration.videoDiscoveryKeyRequired",
         );
       })
       .catch((e) => setMessage(e.message));
@@ -58,11 +58,11 @@ export default function Admin() {
         >
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="youtube">
-                {t("administration.youtubeDataApiKey")}
+              <FieldLabel htmlFor="discovery-key">
+                {t("administration.videoDiscoveryApiKey")}
               </FieldLabel>
               <Input
-                id="youtube"
+                id="discovery-key"
                 type="password"
                 autoComplete="off"
                 value={key}

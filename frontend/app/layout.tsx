@@ -8,6 +8,7 @@ import "@fontsource/noto-sans-myanmar/600.css";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("shared");
   return {
@@ -27,6 +28,7 @@ export default async function Layout({
         <LocaleProvider locale={locale}>
           <ThemeProvider>
             <TooltipProvider>{children}</TooltipProvider>
+            <Toaster />
           </ThemeProvider>
         </LocaleProvider>
       </body>

@@ -1,10 +1,11 @@
 <?php
 
 return [
-    'bilibili_is_temporarily_unavailable' => 'Bilibili is temporarily unavailable.',
-    'from_the_platform_popularity_feed' => 'From the platform popularity feed.',
+    'video_search_unavailable_please_try_again' => 'Video search is temporarily unavailable. Please try again.',
+    'bilibili_is_temporarily_unavailable' => 'Video search is temporarily unavailable.',
+    'from_the_platform_popularity_feed' => 'Popular recently.',
     'matches_your_topic' => 'Matches your topic.',
-    'regional_chart_unavailable_showing_global_results' => 'Regional popularity chart unavailable; showing global results.',
+    'regional_chart_unavailable_showing_global_results' => 'Showing broader popular results.',
 
     'email_or_password_is_incorrect' => 'Email or password is incorrect.',
     'if_that_email_is_registered_a_reset_link_has_been_sent' => 'If that email is registered, a reset link has been sent.',
@@ -41,7 +42,7 @@ return [
     'cannot_read_audio_duration' => 'Cannot read audio duration.',
     'signed_out' => 'Signed out',
     'verification_email_sent' => 'Verification email sent.',
-    'an_administrator_must_add_a_youtube_api_key_to_search_youtube' => 'An administrator must add a YouTube API key to search YouTube.',
-    'youtube_is_temporarily_unavailable' => 'YouTube is temporarily unavailable.',
+    'an_administrator_must_add_a_youtube_api_key_to_search_youtube' => 'Video discovery needs to be configured by an administrator.',
+    'youtube_is_temporarily_unavailable' => 'Video search is temporarily unavailable.',
     'dailymotion_is_temporarily_unavailable' => 'Dailymotion is temporarily unavailable.',
 ];

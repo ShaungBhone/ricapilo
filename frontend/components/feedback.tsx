@@ -3,7 +3,8 @@ import { localizeMessage } from "@/i18n/messages";
 import { resolveLocale } from "@/i18n/locales";
 import { useLocale } from "next-intl";
 import { useTranslations } from "next-intl";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useEffect, useId } from "react";
+import { toast } from "sonner";
 import {
   Empty,
   EmptyHeader,
@@ -13,15 +14,19 @@ import {
 export function Feedback({ message }: { message: string }) {
   const locale = resolveLocale(useLocale());
   const t = useTranslations();
+  const id = useId();
+  const title = t("shared.notice");
+  const description = localizeMessage(message, locale);
 
-  return message ? (
-    <Alert role="status">
-      <AlertTitle>{t("shared.notice")}</AlertTitle>
-      <AlertDescription className="whitespace-pre-line">
-        {localizeMessage(message, locale)}
-      </AlertDescription>
-    </Alert>
-  ) : null;
+  useEffect(() => {
+    if (description) {
+      toast(title, { id, description });
+    } else {
+      toast.dismiss(id);
+    }
+  }, [description, id, title]);
+
+  return null;
 }
 export function Blank({
   title,

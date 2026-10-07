@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\GenerationException;
 use App\Jobs\ProcessProject;
 use App\Models\Assistant;
 use App\Models\Conversation;
@@ -9,9 +10,11 @@ use App\Models\Credential;
 use App\Models\Project;
 use App\Services\Discovery;
 use App\Services\OpenRouter;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -72,14 +75,22 @@ class WorkspaceController extends Controller
 
     public function discover(Request $r, OpenRouter $ai, Discovery $search): mixed
     {
-        $v = $r->validate(['prompt' => 'required|string|max:1000', 'platform' => 'required|in:all,youtube,bilibili', 'assistant_id' => ['nullable', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)]]);
+        $v = $r->validate(['prompt' => 'required|string|max:1000', 'platform' => 'sometimes|required|in:all,youtube,bilibili', 'assistant_id' => ['nullable', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)]]);
         $criteria = $search->intent($v['prompt']);
+        $warnings = [];
         if (! empty($v['assistant_id'])) {
             $a = Assistant::where('user_id', $r->user()->id)->findOrFail($v['assistant_id']);
-            $criteria = $search->intent($v['prompt'], $ai->discoveryIntent($r->user(), $a->llm_model, $v['prompt']));
+            try {
+                $criteria = $search->intent($v['prompt'], $ai->discoveryIntent($r->user(), $a->llm_model, $v['prompt']));
+            } catch (GenerationException|ValidationException|ConnectionException $exception) {
+                Log::warning('Discovery intent unavailable; using prompt parser.', ['exception_type' => $exception::class]);
+                $warnings[] = __('app.video_search_unavailable_please_try_again');
+            }
         }
 
-        return ['query' => $criteria['query'], ...$search->search($criteria['query'], $v['platform'], true, $criteria)];
+        $result = $search->search($criteria['query'], $v['platform'] ?? 'all', true, $criteria);
+
+        return ['query' => $criteria['query'], ...$result, 'warnings' => $result['videos'] === [] && ($warnings !== [] || $result['warnings'] !== []) ? [__('app.video_search_unavailable_please_try_again')] : []];
     }
 
     public function projects(Request $r): mixed

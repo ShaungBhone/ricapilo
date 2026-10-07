@@ -45,7 +45,13 @@ export default function Projects() {
         {data?.data.map((p) => (
           <Card key={p.id}>
             <CardHeader>
-              <CardDescription>{p.source}</CardDescription>
+              <CardDescription>
+                {t(
+                  p.source === "upload"
+                    ? "projects.uploadedVideo"
+                    : "projects.onlineVideo",
+                )}
+              </CardDescription>
               <CardTitle className="leading-7">{p.title}</CardTitle>
             </CardHeader>
             <CardContent>

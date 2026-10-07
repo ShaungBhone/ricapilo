@@ -13,13 +13,13 @@ import {
   Upload,
   AudioLines,
   ArrowUpRight,
+  Bot,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
@@ -33,6 +33,11 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Blank, Feedback } from "@/components/feedback";
 import { useMicrophone } from "@/hooks/use-microphone";
 import { api, json, Assistant, Video } from "@/lib/api";
@@ -43,7 +48,6 @@ export default function Home() {
 
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
-  const [platform, setPlatform] = useState("all");
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [assistant, setAssistant] = useState("");
   const [videos, setVideos] = useState<Video[]>([]);
@@ -87,15 +91,16 @@ export default function Home() {
     setBusy(true);
     setMessage("");
     try {
-      const r = await api<{ videos: Video[]; warnings: string[]; criteria: { mode: string } }>(
-        "/discover",
-        {
-          method: "POST",
-          body: json({ prompt, platform, assistant_id: assistant || null }),
-        },
-      );
+      const r = await api<{
+        videos: Video[];
+        warnings: string[];
+        criteria?: { mode?: string } | null;
+      }>("/discover", {
+        method: "POST",
+        body: json({ prompt, assistant_id: assistant || null }),
+      });
       setVideos(r.videos);
-      setPopular(r.criteria.mode === "popular");
+      setPopular(r.criteria?.mode === "popular");
       setSearched(true);
       setMessage(r.warnings.join("\n"));
     } catch (e) {
@@ -159,6 +164,43 @@ export default function Home() {
               className="min-h-32"
             />
             <InputGroupAddon align="block-end">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:max-w-56 sm:flex-none">
+                <Bot aria-hidden="true" className="size-4 shrink-0" />
+                <NativeSelect
+                  className="min-w-0 flex-1"
+                  aria-label={t("workspace.chooseAssistant")}
+                  value={assistant}
+                  onChange={(e) => setAssistant(e.target.value)}
+                >
+                  <NativeSelectOption value="">
+                    {t("workspace.chooseAnAssistant")}
+                  </NativeSelectOption>
+                  {assistants.map((a) => (
+                    <NativeSelectOption key={a.id} value={a.id}>
+                      {a.name}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Link
+                      className={buttonVariants({
+                        variant: "ghost",
+                        size: "icon",
+                      })}
+                      href="/projects/new"
+                      aria-label={t("workspace.startWithYourOwnFile")}
+                    >
+                      <Upload aria-hidden="true" />
+                    </Link>
+                  }
+                />
+                <TooltipContent>
+                  {t("workspace.startWithYourOwnFile")}
+                </TooltipContent>
+              </Tooltip>
               <Button
                 type="button"
                 variant="ghost"
@@ -173,19 +215,6 @@ export default function Home() {
               >
                 {mic.active ? <Square /> : <Mic />}
               </Button>
-              <NativeSelect
-                aria-label={t("workspace.videoSource")}
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-              >
-                <NativeSelectOption value="all">
-                  YouTube + Bilibili
-                </NativeSelectOption>
-                <NativeSelectOption value="youtube">YouTube</NativeSelectOption>
-                <NativeSelectOption value="bilibili">
-                  Bilibili
-                </NativeSelectOption>
-              </NativeSelect>
               <Button
                 type="submit"
                 className="ml-auto"
@@ -198,29 +227,6 @@ export default function Home() {
             </InputGroupAddon>
           </InputGroup>
         </form>
-        <div className="flex w-full flex-wrap items-center justify-between gap-3">
-          <NativeSelect
-            aria-label={t("workspace.chooseAssistant")}
-            value={assistant}
-            onChange={(e) => setAssistant(e.target.value)}
-          >
-            <NativeSelectOption value="">
-              {t("workspace.chooseAnAssistant")}
-            </NativeSelectOption>
-            {assistants.map((a) => (
-              <NativeSelectOption key={a.id} value={a.id}>
-                {a.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <Link
-            className={buttonVariants({ variant: "ghost", size: "sm" })}
-            href="/projects/new"
-          >
-            <Upload data-icon="inline-start" />{" "}
-            {t("workspace.startWithYourOwnFile")}
-          </Link>
-        </div>
         <Feedback message={message || mic.error} />
         {busy && (
           <p role="status" className="text-sm text-muted-foreground">
@@ -256,14 +262,24 @@ export default function Home() {
         <section className="flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">
-              {t(popular ? "workspace.recentPopularVideos" : "workspace.searchResults")}
+              {t(
+                popular
+                  ? "workspace.recentPopularVideos"
+                  : "workspace.searchResults",
+              )}
             </h2>
             <Badge variant="outline">
               {t("shared.videoCount", { count: videos.length })}
             </Badge>
           </div>
-          {popular && <p className="text-sm text-muted-foreground">{t("workspace.popularityNote")}</p>}
-          <p className="text-sm text-muted-foreground">{t("workspace.accessNote")}</p>
+          {popular && (
+            <p className="text-sm text-muted-foreground">
+              {t("workspace.popularityNote")}
+            </p>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {t("workspace.accessNote")}
+          </p>
           {!videos.length && (
             <Blank
               title={t("workspace.noVideosFound")}
@@ -274,9 +290,6 @@ export default function Home() {
             {videos.map((v) => (
               <Card key={v.platform + v.id} className="overflow-hidden">
                 <CardHeader>
-                  <CardDescription>
-                    <Badge variant="secondary">{v.platform}</Badge>
-                  </CardDescription>
                   <CardTitle className="line-clamp-2 leading-7">
                     {v.title}
                   </CardTitle>
@@ -287,6 +300,7 @@ export default function Home() {
                       src={v.thumbnail}
                       alt=""
                       unoptimized
+                      referrerPolicy="no-referrer"
                       width={360}
                       height={203}
                       className="aspect-video w-full rounded-xl object-cover"
@@ -299,7 +313,8 @@ export default function Home() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {t("workspace.durationSeconds", { count: v.duration })}
-                    {v.published_at && ` · ${new Date(v.published_at).toLocaleDateString(locale)}`}
+                    {v.published_at &&
+                      ` · ${new Date(v.published_at).toLocaleDateString(locale)}`}
                   </p>
                   <p className="text-sm">{v.reason}</p>
                 </CardContent>
