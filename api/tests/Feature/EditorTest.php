@@ -195,4 +195,15 @@ class EditorTest extends TestCase
         $this->assertSame('ready', $project->fresh()->status);
         Http::assertSentCount(1);
     }
+    public function test_media_metadata_ignores_cover_art_and_uses_rotated_display_dimensions(): void
+    {
+        Process::fake(['*' => Process::result(output: json_encode(['format' => ['duration' => 3], 'streams' => [['codec_type' => 'video', 'width' => 100, 'height' => 100, 'disposition' => ['attached_pic' => 1]], ['codec_type' => 'video', 'width' => 640, 'height' => 360, 'side_data_list' => [['side_data_type' => 'Display Matrix', 'rotation' => 90]]], ['codec_type' => 'audio']]]))]);
+        $metadata = app(Media::class)->metadata('test.mp4');
+        $this->assertSame(360, $metadata['width']);
+        $this->assertSame(640, $metadata['height']);
+        $this->assertTrue($metadata['hasAudio']);
+        Process::fake(['*' => Process::result(output: json_encode(['format' => ['duration' => 3], 'streams' => [['codec_type' => 'video', 'width' => 100, 'height' => 100, 'disposition' => ['attached_pic' => 1]], ['codec_type' => 'audio']]]))]);
+        $this->assertSame('audio', app(Media::class)->metadata('music.mp3')['kind']);
+    }
+
 }

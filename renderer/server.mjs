@@ -132,7 +132,7 @@ const server = http.createServer(async (req, res) => {
           "-v",
           "error",
           "-show_entries",
-          "format=duration:stream=codec_type,width,height:stream_disposition=attached_pic:stream_side_data=rotation",
+          "format=duration:stream=codec_type,width,height:stream_disposition=attached_pic:stream_side_data=rotation,side_data_type",
           "-of",
           "json",
           file,

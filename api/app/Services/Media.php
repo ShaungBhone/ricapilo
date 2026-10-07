@@ -60,7 +60,7 @@ class Media
 
     public function metadata(string $path): array
     {
-        $result = Process::timeout(30)->run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height:stream_disposition=attached_pic:stream_side_data=rotation', '-of', 'json', Storage::disk('local')->path($path)]);
+        $result = Process::timeout(30)->run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height:stream_disposition=attached_pic:stream_side_data=rotation,side_data_type', '-of', 'json', Storage::disk('local')->path($path)]);
         $data = json_decode($result->output(), true);
         $duration = (float) ($data['format']['duration'] ?? 0);
         $video = collect($data['streams'] ?? [])->first(fn (array $stream): bool => ($stream['codec_type'] ?? null) === 'video' && ! ($stream['disposition']['attached_pic'] ?? false));
