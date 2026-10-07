@@ -118,7 +118,11 @@ export function captionDownload(captions, format) {
     captions
       .map(
         (c, i) =>
-          `${format === "srt" ? `${i + 1}\n` : ""}${stamp(c.startMs, format === "srt")} --> ${stamp(c.endMs, format === "srt")}\n${c.text.replace(/-->/g, "→")}\n`,
+          `${format === "srt" ? `${i + 1}\n` : ""}${stamp(c.startMs, format === "srt")} --> ${stamp(c.endMs, format === "srt")}\n${c.text
+            .replace(/-->/g, "→")
+            .replace(/\r\n?/g, "\n")
+            .replace(/\n{2,}/g, "\n")
+            .trim()}\n`,
       )
       .join("\n")
   );

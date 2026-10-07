@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import "@fontsource-variable/inter";
 import "@fontsource/noto-sans-myanmar/400.css";
 import "@fontsource/noto-sans-myanmar/600.css";
+import "@fontsource/noto-sans-myanmar/700.css";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";

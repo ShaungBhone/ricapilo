@@ -33,7 +33,7 @@ class EditorSettings
             'settings.layout' => ['required', Rule::in(self::LAYOUTS)],
             'settings.videoVisible' => 'required|boolean',
             'settings.captionsVisible' => 'required|boolean',
-            'settings.slots' => 'required|array|min:1|max:4',
+            'settings.slots' => 'required|array|list|min:1|max:4',
             'settings.slots.*' => 'required|array:assetId,mode,x,y,scale,visible',
             'settings.slots.*.assetId' => ['present', 'nullable', Rule::in($videos)],
             'settings.slots.*.mode' => 'required|in:fit,fill',
@@ -41,7 +41,7 @@ class EditorSettings
             'settings.slots.*.y' => 'required|numeric|between:0,1',
             'settings.slots.*.scale' => 'required|numeric|between:0.25,4',
             'settings.slots.*.visible' => 'required|boolean',
-            'settings.textOverlays' => 'present|array|max:30',
+            'settings.textOverlays' => 'present|array|list|max:30',
             'settings.textOverlays.*' => 'array:id,text,x,y,fontSize,color,bold,background,align,visible',
             'settings.textOverlays.*.id' => 'required|uuid|distinct',
             'settings.textOverlays.*.text' => 'present|nullable|string|max:1000',
@@ -64,9 +64,37 @@ class EditorSettings
             'three' => 3, 'four' => 4, 'fit', 'fill' => 1, default => 2
         };
         Validator::make($validated, ['slots' => 'size:'.$count])->validate();
+        $validated['version'] = 1;
+        foreach (['videoVisible', 'captionsVisible'] as $key) {
+            $validated[$key] = (bool) $validated[$key];
+        }
+
+        foreach ($validated['slots'] as &$slot) {
+            foreach (['x', 'y', 'scale'] as $key) {
+                $slot[$key] = (float) $slot[$key];
+            }
+
+            $slot['visible'] = (bool) $slot['visible'];
+        }
+
         foreach ($validated['textOverlays'] as &$overlay) {
             $overlay['text'] ??= '';
+            foreach (['x', 'y'] as $key) {
+                $overlay[$key] = (float) $overlay[$key];
+            }
+
+            foreach (['visible', 'bold', 'background'] as $key) {
+                $overlay[$key] = (bool) $overlay[$key];
+            }
+
+            $overlay['fontSize'] = (int) $overlay['fontSize'];
         }
+
+        foreach (['sourceVolume', 'narrationVolume', 'musicVolume'] as $key) {
+            $validated['audio'][$key] = (float) $validated['audio'][$key];
+        }
+
+        $validated['audio']['sourceMuted'] = (bool) $validated['audio']['sourceMuted'];
 
         return $validated;
     }

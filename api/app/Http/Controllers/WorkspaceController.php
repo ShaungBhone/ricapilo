@@ -135,7 +135,7 @@ class WorkspaceController extends Controller
             'caption_style' => ['sometimes', Rule::in(EditorSettings::STYLES)],
             'assistant_id' => ['sometimes', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)],
             'editor_settings' => 'sometimes|required|array',
-            'captions' => 'sometimes|nullable|array|max:5000',
+            'captions' => 'sometimes|nullable|array|list|max:5000',
             'captions.*' => 'required|array:text,startMs,endMs',
             'captions.*.text' => 'required|string|max:3500',
             'captions.*.startMs' => 'required|integer|min:0|max:36000000',
@@ -146,6 +146,13 @@ class WorkspaceController extends Controller
             abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, __('app.wait_for_the_current_generation_to_finish'));
             if (isset($v['editor_settings'])) {
                 $v['editor_settings'] = $editor->validate($v['editor_settings'], $locked);
+            }
+
+            if (isset($v['captions'])) {
+                foreach ($v['captions'] as &$caption) {
+                    $caption['startMs'] = (int) $caption['startMs'];
+                    $caption['endMs'] = (int) $caption['endMs'];
+                }
             }
 
             $v = array_filter($v, fn ($value, $key): bool => $value != $locked->$key, ARRAY_FILTER_USE_BOTH);

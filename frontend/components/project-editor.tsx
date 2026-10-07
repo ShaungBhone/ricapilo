@@ -172,7 +172,8 @@ export function ProjectEditor({ id }: { id: string }) {
       if (
         reloadAssets ||
         !before.project ||
-        before.project.has_media !== p.has_media
+        before.project.has_media !== p.has_media ||
+        before.project.updated_at !== p.updated_at
       ) {
         try {
           a = await api<EditorAsset[]>(`/projects/${id}/assets`);

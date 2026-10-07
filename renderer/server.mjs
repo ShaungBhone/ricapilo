@@ -132,7 +132,7 @@ const server = http.createServer(async (req, res) => {
           "-v",
           "error",
           "-show_entries",
-          "format=duration:stream=codec_type,width,height",
+          "format=duration:stream=codec_type,width,height:stream_disposition=attached_pic:stream_side_data=rotation",
           "-of",
           "json",
           file,
@@ -140,11 +140,13 @@ const server = http.createServer(async (req, res) => {
         { timeout: 10000 },
       );
       const info = JSON.parse(stdout),
-        video = info.streams?.find((s) => s.codec_type === "video");
+        video = info.streams?.find((s) => s.codec_type === "video" && !s.disposition?.attached_pic);
+      const rotation=video?.side_data_list?.find(s=>s.side_data_type==="Display Matrix")?.rotation ?? 0;
+      const rotated=Math.abs(rotation)%180===90;
       return {
         duration: Number(info.format?.duration),
-        width: video?.width ?? 0,
-        height: video?.height ?? 0,
+        width: (rotated?video?.height:video?.width) ?? 0,
+        height: (rotated?video?.width:video?.height) ?? 0,
         kind: video ? "video" : "audio",
         hasAudio: info.streams?.some((s) => s.codec_type === "audio"),
       };

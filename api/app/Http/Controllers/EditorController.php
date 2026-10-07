@@ -48,9 +48,8 @@ class EditorController extends Controller
             $assets[] = ['id' => 'source', 'name' => $project->title, ...app(Media::class)->metadata($project->media_path), 'path' => $project->media_path];
         }
 
-        return array_map(function (array $asset) use ($id): array {
+        return array_map(function (array $asset): array {
             unset($asset['path']);
-            $asset['url'] = '/api/v1/projects/'.$id.'/assets/'.$asset['id'].'/stream';
 
             return $asset;
         }, $assets);
