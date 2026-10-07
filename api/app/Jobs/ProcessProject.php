@@ -6,6 +6,7 @@ use App\Exceptions\GenerationException;
 use App\Models\Assistant;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\EditorSettings;
 use App\Services\Media;
 use App\Services\OpenRouter;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -38,9 +39,23 @@ class ProcessProject implements ShouldQueue
             return;
         }
 
+        if ($this->stage === 'prepare') {
+            $p->update(['status' => 'processing', 'error' => null]);
+            $media->acquire($p);
+            $p->refresh();
+            $settings = $p->editor_settings ?? app(EditorSettings::class)->defaults($p);
+            if (! $settings['slots'][0]['assetId']) {
+                $settings['slots'][0]['assetId'] = 'source';
+            }
+
+            $p->update(['editor_settings' => $settings, 'status' => $p->video_path ? 'ready' : ($p->audio_path ? 'audio_ready' : ($p->script ? 'script_ready' : 'draft'))]);
+
+            return;
+        }
+
         $user = User::findOrFail($p->user_id);
         $assistant = Assistant::where('user_id', $user->id)->where('enabled', true)->find($p->assistant_id);
-        if (! $assistant) {
+        if (! $assistant && $this->stage !== 'video') {
             throw new GenerationException('app.choose_an_enabled_assistant');
         }
 
@@ -118,7 +133,7 @@ class ProcessProject implements ShouldQueue
             }
 
             $p->update(['status' => 'rendering']);
-            $body = ['projectId' => (string) $p->id, 'title' => $p->title, 'audioPath' => $p->audio_path, 'mediaPath' => $p->media_path, 'format' => $p->format, 'captionStyle' => $p->caption_style, 'captions' => $p->captions ?? []];
+            $body = ['projectId' => (string) $p->id, 'title' => $p->title, 'audioPath' => $p->audio_path, 'mediaPath' => $p->media_path, 'format' => $p->format, 'captionStyle' => $p->caption_style, 'captions' => $p->captions ?? [], 'editorSettings' => $p->editor_settings ?? app(EditorSettings::class)->defaults($p), 'assets' => $p->editor_assets ?? []];
             $r = Http::timeout(1500)->withToken($token)->post(config('recap.renderer_url').'/render', $body);
             if (! $r->successful()) {
                 throw new GenerationException('app.video_rendering_failed_check_the_renderer_service');

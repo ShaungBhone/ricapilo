@@ -22,6 +22,7 @@ export function Workspace({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const fullWidthPage =
+    /^\/projects\/\d+$/.test(pathname) ||
     pathname === "/assistants" ||
     pathname.startsWith("/assistants/") ||
     pathname === "/conversations";

@@ -9,6 +9,8 @@ use App\Models\Conversation;
 use App\Models\Credential;
 use App\Models\Project;
 use App\Services\Discovery;
+use App\Services\EditorSettings;
+use App\Services\Media;
 use App\Services\OpenRouter;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
@@ -122,22 +124,40 @@ class WorkspaceController extends Controller
         return response()->json(Project::create(['user_id' => $r->user()->id, ...$v]), 201);
     }
 
-    public function updateProject(Request $r, int $id): mixed
+    public function updateProject(Request $r, int $id, EditorSettings $editor): mixed
     {
         $p = $this->project($r, $id);
-        $v = $r->validate(['script' => 'sometimes|required|string|max:20000', 'transcript' => 'sometimes|required|string|max:100000', 'format' => 'sometimes|in:vertical,landscape', 'caption_style' => 'sometimes|in:clean-bottom,boxed-minimal', 'assistant_id' => ['sometimes', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)]]);
-        DB::transaction(function () use ($p, $v): void {
+        $v = $r->validate([
+            'title' => 'sometimes|required|string|max:255',
+            'script' => 'sometimes|nullable|string|max:20000',
+            'transcript' => 'sometimes|nullable|string|max:100000',
+            'format' => 'sometimes|in:vertical,landscape',
+            'caption_style' => ['sometimes', Rule::in(EditorSettings::STYLES)],
+            'assistant_id' => ['sometimes', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)],
+            'editor_settings' => 'sometimes|required|array',
+            'captions' => 'sometimes|nullable|array|max:5000',
+            'captions.*' => 'required|array:text,startMs,endMs',
+            'captions.*.text' => 'required|string|max:3500',
+            'captions.*.startMs' => 'required|integer|min:0|max:36000000',
+            'captions.*.endMs' => 'required|integer|gt:captions.*.startMs|max:36000000',
+        ]);
+        DB::transaction(function () use ($p, $v, $editor): void {
             $locked = Project::lockForUpdate()->findOrFail($p->id);
             abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, __('app.wait_for_the_current_generation_to_finish'));
+            if (isset($v['editor_settings'])) {
+                $v['editor_settings'] = $editor->validate($v['editor_settings'], $locked);
+            }
+
+            $v = array_filter($v, fn ($value, $key): bool => $value != $locked->$key, ARRAY_FILTER_USE_BOTH);
             $locked->fill($v);
-            if (isset($v['script'])) {
+            if (array_key_exists('script', $v)) {
                 $locked->audio_path = null;
                 $locked->video_path = null;
                 $locked->captions = null;
-                $locked->status = 'script_ready';
+                $locked->status = $locked->script ? 'script_ready' : 'draft';
             }
 
-            if (isset($v['transcript']) || isset($v['assistant_id'])) {
+            if (array_key_exists('transcript', $v) || isset($v['assistant_id'])) {
                 $locked->script = null;
                 $locked->audio_path = null;
                 $locked->video_path = null;
@@ -145,7 +165,7 @@ class WorkspaceController extends Controller
                 $locked->status = 'draft';
             }
 
-            if (isset($v['format']) || isset($v['caption_style'])) {
+            if (array_intersect(array_keys($v), ['title', 'format', 'caption_style', 'captions', 'editor_settings'])) {
                 $locked->video_path = null;
                 if ($locked->audio_path) {
                     $locked->status = 'audio_ready';
@@ -164,16 +184,38 @@ class WorkspaceController extends Controller
         abort_if(in_array($p->status, ['queued', 'processing', 'rendering']), 409);
         $r->validate(['file' => 'required|file|mimes:mp4,mov,webm,mp3,wav,m4a,ogg|max:307200']);
         $path = $r->file('file')->store('projects/'.$p->id, 'local');
-        $p->update(['media_path' => $path, 'source' => 'upload', 'transcript' => null, 'script' => null, 'audio_path' => null, 'video_path' => null, 'status' => 'draft']);
+        try {
+            app(Media::class)->metadata($path);
+            $oldPath = DB::transaction(function () use ($p, $path): ?string {
+                $locked = Project::lockForUpdate()->findOrFail($p->id);
+                abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409);
+                $oldPath = $locked->media_path;
+                $settings = $locked->editor_settings ?? app(EditorSettings::class)->defaults($locked);
+                $settings['slots'][0] = ['assetId' => 'source', 'mode' => $settings['slots'][0]['mode'], 'x' => 0.5, 'y' => 0.5, 'scale' => 1, 'visible' => true];
+                $locked->update(['media_path' => $path, 'source' => 'upload', 'transcript' => null, 'script' => null, 'audio_path' => null, 'video_path' => null, 'captions' => null, 'editor_settings' => $settings, 'status' => 'draft', 'stage' => null, 'error' => null]);
 
-        return $p;
+                return $oldPath;
+            });
+        } catch (\Throwable $throwable) {
+            Storage::disk('local')->delete($path);
+            throw $throwable;
+        }
+
+        if ($oldPath && $oldPath !== $path) {
+            Storage::disk('local')->delete($oldPath);
+        }
+
+        return $p->fresh();
     }
 
     public function generate(Request $r, int $id, OpenRouter $ai): mixed
     {
         $p = $this->project($r, $id);
         $v = $r->validate(['stage' => 'required|in:script,audio,video']);
-        $ai->client($r->user());
+        if ($v['stage'] !== 'video') {
+            $ai->client($r->user());
+        }
+
         DB::transaction(function () use ($p, $v): void {
             $locked = Project::lockForUpdate()->findOrFail($p->id);
             abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, __('app.generation_is_already_running'));

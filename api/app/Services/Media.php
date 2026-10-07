@@ -6,6 +6,7 @@ use App\Exceptions\GenerationException;
 use App\Models\Project;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class Media
 {
@@ -55,6 +56,19 @@ class Media
         }
 
         return $files;
+    }
+
+    public function metadata(string $path): array
+    {
+        $result = Process::timeout(30)->run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height', '-of', 'json', Storage::disk('local')->path($path)]);
+        $data = json_decode($result->output(), true);
+        $duration = (float) ($data['format']['duration'] ?? 0);
+        $video = collect($data['streams'] ?? [])->firstWhere('codec_type', 'video');
+        if (! $result->successful() || $duration <= 0) {
+            throw ValidationException::withMessages(['file' => __('app.cannot_read_audio_duration')]);
+        }
+
+        return ['kind' => $video ? 'video' : 'audio', 'width' => (int) ($video['width'] ?? 0), 'height' => (int) ($video['height'] ?? 0), 'duration' => $duration, 'hasAudio' => collect($data['streams'] ?? [])->contains('codec_type', 'audio')];
     }
 
     public function duration(string $path): float

@@ -5,6 +5,8 @@ import path from "node:path";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { subtitles } from "./captions.mjs";
+import { renderPlan } from "./render.mjs";
+import { ratios, layouts, templates } from "../frontend/lib/editor-core.mjs";
 const execute = promisify(execFile);
 const root = process.env.MEDIA_ROOT || "/media";
 const token = process.env.RENDERER_TOKEN || "";
@@ -91,69 +93,94 @@ const server = http.createServer(async (req, res) => {
     await mkdir(dir, { recursive: true });
     const audio = safeFile(input.audioPath, id);
     await access(audio);
-    const vertical = input.format === "vertical";
-    const w = vertical ? 720 : 1280,
-      h = vertical ? 1280 : 720;
-    const ass = path.join(dir, "captions.ass");
-    await writeFile(
-      ass,
-      subtitles(input.captions, vertical, input.captionStyle),
-    );
-    const out = path.join(dir, "recap.mp4");
-    let footage = null;
-    if (input.mediaPath) {
-      const media = safeFile(input.mediaPath, id);
+    const settings = input.editorSettings ?? {
+      version: 1,
+      aspectRatio: input.format === "vertical" ? "9:16" : "16:9",
+      layout: "fill",
+      slots: [
+        {
+          assetId: input.mediaPath ? "source" : null,
+          mode: "fill",
+          x: 0.5,
+          y: 0.5,
+          scale: 1,
+          visible: true,
+        },
+      ],
+      textOverlays: [],
+      videoVisible: true,
+      captionsVisible: true,
+      audio: {
+        sourceMuted: true,
+        sourceVolume: 1,
+        narrationVolume: 1,
+        musicAssetId: null,
+        musicVolume: 0.22,
+      },
+    };
+    if (
+      !ratios[settings.aspectRatio] ||
+      !layouts.includes(settings.layout) ||
+      !templates.includes(input.captionStyle) ||
+      settings.version !== 1
+    )
+      throw Error("Invalid editor settings");
+    const probe = async (file) => {
       const { stdout } = await execute(
         "ffprobe",
         [
           "-v",
           "error",
-          "-select_streams",
-          "v:0",
           "-show_entries",
-          "stream=codec_type",
+          "format=duration:stream=codec_type,width,height",
           "-of",
           "json",
-          media,
+          file,
         ],
         { timeout: 10000 },
       );
-      if (JSON.parse(stdout).streams?.length) footage = media;
+      const info = JSON.parse(stdout),
+        video = info.streams?.find((s) => s.codec_type === "video");
+      return {
+        duration: Number(info.format?.duration),
+        width: video?.width ?? 0,
+        height: video?.height ?? 0,
+        kind: video ? "video" : "audio",
+        hasAudio: info.streams?.some((s) => s.codec_type === "audio"),
+      };
+    };
+    const narrationInfo = await probe(audio);
+    if (!Number.isFinite(narrationInfo.duration) || narrationInfo.duration <= 0)
+      throw Error("Invalid narration");
+    const assets = [];
+    for (const asset of input.assets ?? []) {
+      const file = safeFile(asset.path, id);
+      assets.push({ ...asset, ...(await probe(file)), path: file });
     }
-    const inputs = footage
-      ? ["-stream_loop", "-1", "-i", footage]
-      : ["-f", "lavfi", "-i", `color=c=0x132030:s=${w}x${h}:r=30`];
-    const filter = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,subtitles=${ass}`;
-    await run([
-      "-y",
-      ...inputs,
-      "-i",
-      audio,
-      "-map",
-      "0:v:0",
-      "-map",
-      "1:a:0",
-      "-vf",
-      filter,
-      "-r",
-      "30",
-      "-c:v",
-      "libx264",
-      "-pix_fmt",
-      "yuv420p",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "23",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "128k",
-      "-shortest",
-      "-movflags",
-      "+faststart",
+    if (input.mediaPath) {
+      const file = safeFile(input.mediaPath, id);
+      assets.push({ id: "source", path: file, ...(await probe(file)) });
+    }
+    const [w, h] = ratios[settings.aspectRatio];
+    const ass = path.join(dir, "captions.ass"),
+      out = path.join(dir, "recap.mp4");
+    await writeFile(
+      ass,
+      subtitles(
+        input.captions,
+        input.format === "vertical",
+        input.captionStyle,
+        { width: w, height: h, settings, duration: narrationInfo.duration },
+      ),
+    );
+    const plan = renderPlan(
+      { ...input, editorSettings: settings, audioPath: audio },
+      assets,
+      narrationInfo.duration,
+      ass,
       out,
-    ]);
+    );
+    await run(plan.args);
     send(200, { path: `projects/${id}/recap.mp4` });
   } catch (e) {
     send(500, { error: "Rendering failed" });

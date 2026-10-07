@@ -1,3 +1,4 @@
+import type { EditorSettings } from "@/lib/editor";
 import { browserLocale } from "@/i18n/locales";
 import { translateMessage } from "@/i18n/messages";
 export const API = "/api/backend/api/v1";
@@ -110,6 +111,11 @@ export type Project = {
   caption_style: string;
   captions: Caption[] | null;
   usage: unknown[] | null;
+  editor_settings: EditorSettings | null;
+  has_audio: boolean;
+  has_video: boolean;
+  has_media: boolean;
+  updated_at: string;
 };
 export type Conversation = {
   id: number;

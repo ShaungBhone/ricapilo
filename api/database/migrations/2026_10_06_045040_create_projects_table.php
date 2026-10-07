@@ -25,6 +25,8 @@ return new class extends Migration
             $t->string('video_path')->nullable();
             $t->string('media_path')->nullable();
             $t->json('captions')->nullable();
+            $t->json('editor_settings')->nullable();
+            $t->json('editor_assets')->nullable();
             $t->json('usage')->nullable();
             $t->string('format')->default('vertical');
             $t->string('caption_style')->default('clean-bottom');

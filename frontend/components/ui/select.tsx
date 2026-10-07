@@ -5,18 +5,10 @@ import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { cn } from "cn";
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react";
 
-function Select<Value = any, Multiple extends boolean = false>({
-  onValueChange,
-  ...props
-}: Omit<SelectPrimitive.Root.Props<Value, Multiple>, "onValueChange"> & {
-  onValueChange?: (value: any, eventDetails?: any) => void;
-}) {
-  return (
-    <SelectPrimitive.Root
-      {...(props as any)}
-      onValueChange={onValueChange as any}
-    />
-  );
+function Select<Value = string, Multiple extends boolean = false>(
+  props: SelectPrimitive.Root.Props<Value, Multiple>,
+) {
+  return <SelectPrimitive.Root {...props} />;
 }
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
@@ -116,7 +108,10 @@ function SelectLabel({
   return (
     <SelectPrimitive.GroupLabel
       data-slot="select-label"
-      className={cn("px-1.5 py-1 text-xs font-medium text-muted-foreground", className)}
+      className={cn(
+        "px-1.5 py-1 text-xs font-medium text-muted-foreground",
+        className,
+      )}
       {...props}
     />
   );

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EditorController;
 use App\Http\Controllers\WorkspaceController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -39,6 +40,11 @@ Route::prefix('api/v1')->group(function (): void {
         Route::delete('/assistants/{id}', [WorkspaceController::class, 'deleteAssistant']);
         Route::get('/projects', [WorkspaceController::class, 'projects']);
         Route::post('/projects', [WorkspaceController::class, 'createProject']);
+        Route::post('/projects/{id}/prepare', [EditorController::class, 'prepare'])->middleware('throttle:generation');
+        Route::get('/projects/{id}/assets', [EditorController::class, 'assets']);
+        Route::post('/projects/{id}/assets', [EditorController::class, 'upload']);
+        Route::get('/projects/{id}/assets/{assetId}/stream', [EditorController::class, 'stream']);
+        Route::delete('/projects/{id}/assets/{assetId}', [EditorController::class, 'delete']);
         Route::get('/projects/{id}', [WorkspaceController::class, 'showProject']);
         Route::patch('/projects/{id}', [WorkspaceController::class, 'updateProject']);
         Route::post('/projects/{id}/upload', [WorkspaceController::class, 'upload']);
