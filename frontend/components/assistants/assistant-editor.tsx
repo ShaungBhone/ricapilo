@@ -13,6 +13,7 @@ import {
   PanelLeft,
   MoreHorizontal,
   LoaderCircle,
+  ChevronsUpDown,
 } from "lucide-react";
 import { AssistantSplit } from "./assistant-split";
 import { api, json, type Assistant, type Model } from "@/lib/api";
@@ -33,14 +34,16 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectGroup,
-  SelectLabel,
-  SelectItem,
-} from "@/components/ui/select";
+  ModelSelector,
+  ModelSelectorTrigger,
+  ModelSelectorContent,
+  ModelSelectorInput,
+  ModelSelectorList,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorItem,
+  ModelSelectorName,
+} from "@/components/ai-elements/model-selector";
 import {
   Sheet,
   SheetTrigger,
@@ -64,6 +67,7 @@ import {
 } from "./shared";
 
 type Draft = Omit<Assistant, "id">;
+type ModelField = "llm_model" | "stt_model" | "tts_model";
 type Section = "overview" | "allSettings" | "modelsVoice" | "messages";
 const sections = [
   { key: "overview", icon: FileText },
@@ -185,6 +189,7 @@ export function AssistantEditor({ assistantId }: { assistantId: string }) {
   const isNew = assistantId === "new";
   const [draft, setDraft] = useState<Draft>(initial);
   const [showAllModels, setShowAllModels] = useState(false);
+  const [modelPicker, setModelPicker] = useState<ModelField | null>(null);
   const [baseline, setBaseline] = useState<Draft>(initial);
   const [saved, setSaved] = useState<Assistant | null>(null);
   const [models, setModels] = useState<Model[]>([]);
@@ -329,6 +334,14 @@ export function AssistantEditor({ assistantId }: { assistantId: string }) {
     if (!formRef.current?.checkValidity()) {
       setSection("allSettings");
       requestAnimationFrame(() => formRef.current?.reportValidity());
+      return;
+    }
+    const missingModel = (
+      ["llm_model", "stt_model", "tts_model"] as const
+    ).find((key) => !draft[key]);
+    if (missingModel) {
+      setSection("modelsVoice");
+      setModelPicker(missingModel);
       return;
     }
     locked.current = true;
@@ -655,10 +668,9 @@ export function AssistantEditor({ assistantId }: { assistantId: string }) {
                           <Button
                             type="button"
                             variant="outline"
-                            size="sm"
                             onClick={() => setShowAllModels((v) => !v)}
                           >
-                            <SlidersHorizontal className="size-3.5" />
+                            <SlidersHorizontal data-icon="inline-start" />
                             {showAllModels
                               ? t("assistants.showRecommendedOnly")
                               : t("assistants.showAllModels")}
@@ -704,51 +716,102 @@ export function AssistantEditor({ assistantId }: { assistantId: string }) {
                               groupModelsByProvider(options);
                             return (
                               <Field key={key}>
-                                <FieldLabel htmlFor={key}>
+                                <FieldLabel id={`${key}-label`} htmlFor={key}>
                                   {t(label)}
                                 </FieldLabel>
-                                <Select
+                                <input
+                                  type="hidden"
                                   name={key}
-                                  required
-                                  value={draft[key] || undefined}
-                                  onValueChange={(value) =>
-                                    change(key, value ?? "")
+                                  value={draft[key]}
+                                />
+                                <ModelSelector
+                                  open={modelPicker === key}
+                                  onOpenChange={(open) =>
+                                    setModelPicker(open ? key : null)
                                   }
                                 >
-                                  <SelectTrigger id={key} className="w-full">
-                                    <SelectValue
-                                      placeholder={t("assistants.chooseAModel")}
-                                    >
-                                      {(value: string | null) =>
-                                        value
-                                          ? (models.find((m) => m.id === value)
-                                              ?.name ?? value)
-                                          : t("assistants.chooseAModel")
-                                      }
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {unavailable && (
-                                      <SelectItem value={draft[key]}>
-                                        {t("assistants.unavailableModel", {
-                                          model: draft[key],
-                                        })}
-                                      </SelectItem>
-                                    )}
-                                    {groupedOptions.map((group) => (
-                                      <SelectGroup key={group.provider}>
-                                        <SelectLabel>
-                                          {group.provider}
-                                        </SelectLabel>
-                                        {group.models.map((m) => (
-                                          <SelectItem key={m.id} value={m.id}>
-                                            {m.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectGroup>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                  <ModelSelectorTrigger
+                                    id={key}
+                                    aria-labelledby={`${key}-label ${key}-value`}
+                                    render={
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full justify-between"
+                                      />
+                                    }
+                                  >
+                                    <ModelSelectorName id={`${key}-value`}>
+                                      {models.find((m) => m.id === draft[key])
+                                        ?.name ||
+                                        draft[key] ||
+                                        t("assistants.chooseAModel")}
+                                    </ModelSelectorName>
+                                    <ChevronsUpDown data-icon="inline-end" />
+                                  </ModelSelectorTrigger>
+                                  <ModelSelectorContent
+                                    title={t(label)}
+                                    aria-describedby={undefined}
+                                    showCloseButton={false}
+                                    className="sm:max-w-xl"
+                                  >
+                                    <ModelSelectorInput
+                                      placeholder={t("assistants.searchModels")}
+                                      aria-label={t("assistants.searchModels")}
+                                    />
+                                    <ModelSelectorList className="max-h-[min(60vh,24rem)]">
+                                      <ModelSelectorEmpty>
+                                        {t("assistants.noModelsFound")}
+                                      </ModelSelectorEmpty>
+                                      {unavailable && (
+                                        <ModelSelectorGroup
+                                          heading={t("assistants.currentModel")}
+                                        >
+                                          <ModelSelectorItem
+                                            value={draft[key]}
+                                            data-checked="true"
+                                            onSelect={() =>
+                                              setModelPicker(null)
+                                            }
+                                          >
+                                            <ModelSelectorName>
+                                              {t(
+                                                "assistants.unavailableModel",
+                                                { model: draft[key] },
+                                              )}
+                                            </ModelSelectorName>
+                                          </ModelSelectorItem>
+                                        </ModelSelectorGroup>
+                                      )}
+                                      {groupedOptions.map((group) => (
+                                        <ModelSelectorGroup
+                                          key={group.provider}
+                                          heading={group.provider}
+                                        >
+                                          {group.models.map((m) => (
+                                            <ModelSelectorItem
+                                              key={m.id}
+                                              value={m.id}
+                                              keywords={[
+                                                m.name,
+                                                group.provider,
+                                              ]}
+                                              data-checked={draft[key] === m.id}
+                                              onSelect={() => {
+                                                change(key, m.id);
+                                                setModelPicker(null);
+                                              }}
+                                            >
+                                              <ModelSelectorName>
+                                                {m.name}
+                                              </ModelSelectorName>
+                                            </ModelSelectorItem>
+                                          ))}
+                                        </ModelSelectorGroup>
+                                      ))}
+                                    </ModelSelectorList>
+                                  </ModelSelectorContent>
+                                </ModelSelector>
                               </Field>
                             );
                           })}

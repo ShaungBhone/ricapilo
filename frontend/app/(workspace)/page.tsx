@@ -320,7 +320,7 @@ export default function Home() {
                   </p>
                   <p className="text-sm">{v.reason}</p>
                 </CardContent>
-                <CardFooter className="gap-2">
+                <CardFooter className="mt-auto gap-2">
                   <Button disabled={busy} onClick={() => void select(v)}>
                     {t("workspace.createRecap")}
                   </Button>

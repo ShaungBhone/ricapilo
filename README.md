@@ -37,7 +37,7 @@ Refresh the browser after the build finishes. Backend changes also require rebui
 For live frontend updates while editing code, start it with the development override:
 
 ```sh
-docker compose -f compose.yaml -f compose.dev.yaml up --build -d frontend
+docker compose -f compose.yaml -f compose.dev.yaml up --build frontend
 ```
 
 This mounts `frontend/` and runs Next.js development mode with file polling for Docker. Dependencies and build output stay in Docker volumes. This override applies to the frontend; backend changes still require rebuilding the API and worker images.
