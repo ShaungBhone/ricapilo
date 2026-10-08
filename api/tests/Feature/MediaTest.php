@@ -17,7 +17,11 @@ class MediaTest extends TestCase
 
     public static function sources(): array
     {
-        return [['youtube', 'abcdefghijk', 'https://www.youtube.com/watch?v=abcdefghijk'], ['bilibili', 'BV1xx411c7mD', 'https://www.bilibili.com/video/BV1xx411c7mD'], ['dailymotion', 'x123', 'https://www.dailymotion.com/video/x123']];
+        return [
+            ['youtube', 'abcdefghijk', 'https://www.youtube.com/watch?v=abcdefghijk'],
+            ['bilibili', 'BV1xx411c7mD', 'https://www.bilibili.com/video/BV1xx411c7mD'],
+            ['dailymotion', 'x123', 'https://www.dailymotion.com/video/x123'],
+        ];
     }
 
     #[DataProvider('sources')]

@@ -52,7 +52,13 @@ class ProcessProject implements ShouldQueue
                 $settings['slots'][0]['assetId'] = 'source';
             }
 
-            $project->update(['editor_settings' => $settings, 'status' => $project->video_path ? 'ready' : ($project->audio_path ? 'audio_ready' : ($project->script ? 'script_ready' : 'draft'))]);
+            $status = match (true) {
+                (bool) $project->video_path => 'ready',
+                (bool) $project->audio_path => 'audio_ready',
+                (bool) $project->script => 'script_ready',
+                default => 'draft',
+            };
+            $project->update(['editor_settings' => $settings, 'status' => $status]);
 
             return;
         }
@@ -85,7 +91,9 @@ class ProcessProject implements ShouldQueue
                 throw new GenerationException('app.source_transcript_exceeds_100_000_characters_use_a_shorter_selection');
             }
 
-            $result = $ai->prompt(new RecapWriter($project->target_seconds, $assistant->instructions), $assistant->llm_model, 'Source title: '.$project->title."\nSource transcript:\n".$transcript);
+            $writer = new RecapWriter($project->target_seconds, $assistant->instructions);
+            $prompt = 'Source title: '.$project->title."\nSource transcript:\n".$transcript;
+            $result = $ai->prompt($writer, $assistant->llm_model, $prompt);
             $usage[] = ['stage' => 'script', 'usage' => $result['usage']];
             $project->update(['script' => $result['text'], 'status' => 'script_ready', 'usage' => $usage]);
         } elseif ($this->stage === 'audio') {
@@ -110,7 +118,11 @@ class ProcessProject implements ShouldQueue
                 $total = max(1, mb_strlen($text));
                 foreach ($phrases as $phrase) {
                     $length = $seconds * mb_strlen($phrase) / $total;
-                    $captions[] = ['text' => $phrase, 'startMs' => (int) ($offset * 1000), 'endMs' => (int) (($offset + $length) * 1000)];
+                    $captions[] = [
+                        'text' => $phrase,
+                        'startMs' => (int) ($offset * 1000),
+                        'endMs' => (int) (($offset + $length) * 1000),
+                    ];
                     $offset += $length;
                 }
             }
@@ -119,13 +131,26 @@ class ProcessProject implements ShouldQueue
                 throw new GenerationException('app.the_narration_script_is_empty');
             }
 
-            file_put_contents($dir.'/concat.txt', implode("\n", array_map(fn (string $path): string => "file '".$path."'", $segments)));
-            $concat = Process::timeout(300)->run([config('recap.ffmpeg'), '-y', '-f', 'concat', '-safe', '0', '-i', $dir.'/concat.txt', '-c', 'copy', $dir.'/narration.mp3']);
+            $playlist = array_map(fn (string $path): string => "file '".$path."'", $segments);
+            file_put_contents($dir.'/concat.txt', implode("\n", $playlist));
+            $concat = Process::timeout(300)->run([
+                config('recap.ffmpeg'),
+                '-y',
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', $dir.'/concat.txt',
+                '-c', 'copy',
+                $dir.'/narration.mp3',
+            ]);
             if (! $concat->successful()) {
                 throw new GenerationException('app.audio_assembly_failed');
             }
 
-            $project->update(['audio_path' => 'projects/'.$project->id.'/narration.mp3', 'captions' => $captions, 'status' => 'audio_ready']);
+            $project->update([
+                'audio_path' => 'projects/'.$project->id.'/narration.mp3',
+                'captions' => $captions,
+                'status' => 'audio_ready',
+            ]);
         } elseif ($this->stage === 'video') {
             if (! $project->audio_path) {
                 throw new GenerationException('app.generate_narration_before_rendering_video');
@@ -137,7 +162,17 @@ class ProcessProject implements ShouldQueue
             }
 
             $project->update(['status' => 'rendering']);
-            $body = ['projectId' => (string) $project->id, 'title' => $project->title, 'audioPath' => $project->audio_path, 'mediaPath' => $project->media_path, 'format' => $project->format, 'captionStyle' => $project->caption_style, 'captions' => $project->captions ?? [], 'editorSettings' => $project->editor_settings ?? app(EditorSettings::class)->defaults($project), 'assets' => $project->editor_assets ?? []];
+            $body = [
+                'projectId' => (string) $project->id,
+                'title' => $project->title,
+                'audioPath' => $project->audio_path,
+                'mediaPath' => $project->media_path,
+                'format' => $project->format,
+                'captionStyle' => $project->caption_style,
+                'captions' => $project->captions ?? [],
+                'editorSettings' => $project->editor_settings ?? app(EditorSettings::class)->defaults($project),
+                'assets' => $project->editor_assets ?? [],
+            ];
             $response = Http::timeout(1500)->withToken($token)->post(config('recap.renderer_url').'/render', $body);
             if (! $response->successful()) {
                 throw new GenerationException('app.video_rendering_failed_check_the_renderer_service');
@@ -154,7 +189,9 @@ class ProcessProject implements ShouldQueue
 
     public function failed(?Throwable $error): void
     {
-        $message = $error instanceof GenerationException ? $error->getMessage() : 'app.generation_failed_check_your_providers_and_retry';
+        $message = $error instanceof GenerationException
+            ? $error->getMessage()
+            : 'app.generation_failed_check_your_providers_and_retry';
         Project::whereKey($this->projectId)->update(['status' => 'failed', 'error' => mb_substr($message, 0, 500)]);
     }
 }

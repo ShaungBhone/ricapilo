@@ -18,24 +18,48 @@ class LocalizationTest extends TestCase
 
     public function test_validation_uses_requested_language_and_defaults_to_burmese(): void
     {
-        $this->withHeader('Accept-Language', '')->postJson('/api/v1/auth/login', [])->assertUnprocessable()->assertJsonPath('errors.email.0', 'အီးမေးလ် ကို ထည့်ရန် လိုအပ်ပါသည်။');
-        $this->withHeader('Accept-Language', 'en')->postJson('/api/v1/auth/login', [])->assertUnprocessable()->assertJsonPath('errors.email.0', 'The email field is required.');
-        $this->withHeader('Accept-Language', 'fr')->postJson('/api/v1/auth/login', [])->assertUnprocessable()->assertJsonPath('errors.email.0', 'အီးမေးလ် ကို ထည့်ရန် လိုအပ်ပါသည်။');
+        $this->withHeader('Accept-Language', '')
+            ->postJson('/api/v1/auth/login', [])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'အီးမေးလ် ကို ထည့်ရန် လိုအပ်ပါသည်။');
+        $this->withHeader('Accept-Language', 'en')
+            ->postJson('/api/v1/auth/login', [])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'The email field is required.');
+        $this->withHeader('Accept-Language', 'fr')
+            ->postJson('/api/v1/auth/login', [])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'အီးမေးလ် ကို ထည့်ရန် လိုအပ်ပါသည်။');
     }
 
     public function test_login_errors_and_discovery_warnings_are_localized(): void
     {
-        $this->withHeader('Accept-Language', 'en')->postJson('/api/v1/auth/login', ['email' => 'none@example.com', 'password' => 'wrong'])->assertUnprocessable()->assertJsonPath('errors.email.0', 'Email or password is incorrect.');
-        $this->withHeader('Accept-Language', 'my')->postJson('/api/v1/auth/login', ['email' => 'none@example.com', 'password' => 'wrong'])->assertUnprocessable()->assertJsonPath('errors.email.0', 'အီးမေးလ် သို့မဟုတ် စကားဝှက် မမှန်ပါ။');
-        $this->actingAs(User::factory()->create())->withHeader('Accept-Language', 'en')->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'youtube'])->assertOk()->assertJsonPath('warnings.0', 'Video search is temporarily unavailable. Please try again.');
-        $this->withHeader('Accept-Language', 'my')->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'youtube'])->assertOk()->assertJsonPath('warnings.0', 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။ ထပ်မံကြိုးစားပါ။');
+        $this->withHeader('Accept-Language', 'en')
+            ->postJson('/api/v1/auth/login', ['email' => 'none@example.com', 'password' => 'wrong'])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'Email or password is incorrect.');
+        $this->withHeader('Accept-Language', 'my')
+            ->postJson('/api/v1/auth/login', ['email' => 'none@example.com', 'password' => 'wrong'])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'အီးမေးလ် သို့မဟုတ် စကားဝှက် မမှန်ပါ။');
+        $this->actingAs(User::factory()->create())
+            ->withHeader('Accept-Language', 'en')
+            ->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'youtube'])
+            ->assertOk()
+            ->assertJsonPath('warnings.0', 'Video search is temporarily unavailable. Please try again.');
+        $this->withHeader('Accept-Language', 'my')
+            ->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'youtube'])
+            ->assertOk()
+            ->assertJsonPath('warnings.0', 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။ ထပ်မံကြိုးစားပါ။');
     }
 
     public function test_admin_validation_uses_generic_video_discovery_labels(): void
     {
         $this->actingAs(User::factory()->create(['is_admin' => true]));
         foreach (['en', 'my'] as $locale) {
-            $response = $this->withHeader('Accept-Language', $locale)->putJson('/api/v1/admin', ['youtube_key' => str_repeat('x', 501), 'disabled_models' => []])->assertUnprocessable();
+            $response = $this->withHeader('Accept-Language', $locale)
+                ->putJson('/api/v1/admin', ['youtube_key' => str_repeat('x', 501), 'disabled_models' => []])
+                ->assertUnprocessable();
             $message = $response->json('errors.youtube_key.0');
             $this->assertStringContainsString(trans('validation.attributes.youtube_key', [], $locale), $message);
             $this->assertDoesNotMatchRegularExpression('/youtube|bilibili/i', $message);
@@ -46,11 +70,19 @@ class LocalizationTest extends TestCase
     {
         $user = User::factory()->create();
         $project = Project::factory()->create(['user_id' => $user->id, 'error' => 'The source has no audio.']);
-        $this->actingAs($user)->withHeader('Accept-Language', 'my')->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('error', 'ရင်းမြစ်တွင် အသံမရှိပါ။');
+        $this->actingAs($user)
+            ->withHeader('Accept-Language', 'my')
+            ->getJson('/api/v1/projects/'.$project->id)
+            ->assertOk()
+            ->assertJsonPath('error', 'ရင်းမြစ်တွင် အသံမရှိပါ။');
         (new ProcessProject($project->id, 'script'))->failed(new GenerationException('app.the_source_has_no_audio'));
         $this->assertSame('app.the_source_has_no_audio', $project->fresh()->getRawOriginal('error'));
-        $this->withHeader('Accept-Language', 'en')->getJson('/api/v1/projects/'.$project->id)->assertJsonPath('error', 'The source has no audio.');
-        $this->withHeader('Accept-Language', 'my')->getJson('/api/v1/projects/'.$project->id)->assertJsonPath('error', 'ရင်းမြစ်တွင် အသံမရှိပါ။');
+        $this->withHeader('Accept-Language', 'en')
+            ->getJson('/api/v1/projects/'.$project->id)
+            ->assertJsonPath('error', 'The source has no audio.');
+        $this->withHeader('Accept-Language', 'my')
+            ->getJson('/api/v1/projects/'.$project->id)
+            ->assertJsonPath('error', 'ရင်းမြစ်တွင် အသံမရှိပါ။');
         $project->update(['error' => 'Provider returned error XYZ']);
         $this->getJson('/api/v1/projects/'.$project->id)->assertJsonPath('error', 'Provider returned error XYZ');
     }
@@ -61,7 +93,14 @@ class LocalizationTest extends TestCase
         foreach (['my', 'en'] as $locale) {
             Notification::fake();
             $email = $locale.'@example.com';
-            $this->withHeader('Accept-Language', $locale)->postJson('/api/v1/auth/register', ['name' => 'New user', 'email' => $email, 'password' => 'GoodPassword123', 'password_confirmation' => 'GoodPassword123'])->assertCreated();
+            $this->withHeader('Accept-Language', $locale)
+                ->postJson('/api/v1/auth/register', [
+                    'name' => 'New user',
+                    'email' => $email,
+                    'password' => 'GoodPassword123',
+                    'password_confirmation' => 'GoodPassword123',
+                ])
+                ->assertCreated();
             $user = User::where('email', $email)->firstOrFail();
             Notification::assertSentTo($user, VerifyEmail::class, function ($notification) use ($user, $locale): bool {
                 $mail = $notification->toMail($user);
@@ -71,7 +110,9 @@ class LocalizationTest extends TestCase
 
                 return true;
             });
-            $this->withHeader('Accept-Language', $locale)->postJson('/api/v1/auth/forgot', ['email' => $user->email])->assertOk();
+            $this->withHeader('Accept-Language', $locale)
+                ->postJson('/api/v1/auth/forgot', ['email' => $user->email])
+                ->assertOk();
             Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user, $locale): bool {
                 $mail = $notification->toMail($user);
                 $this->assertSame($locale === 'my' ? 'သင့်စကားဝှက်ကို ပြန်သတ်မှတ်ပါ' : 'Reset your password', $mail->subject);

@@ -11,9 +11,21 @@ class Bilibili
 {
     public function search(string $query): array
     {
-        $result = Process::timeout(30)->run([config('recap.media_python'), config('recap.bilibili_script'), $query === '' ? 'hot' : 'search', $query]);
+        $mode = $query === '' ? 'hot' : 'search';
+        $result = Process::timeout(30)->run([
+            config('recap.media_python'),
+            config('recap.bilibili_script'),
+            $mode,
+            $query,
+        ]);
+
         $data = json_decode($result->output(), true);
-        if (! $result->successful() || ! is_array($data) || ($data['ok'] ?? false) !== true || ! is_array($data['items'] ?? null)) {
+        $valid = $result->successful()
+            && is_array($data)
+            && ($data['ok'] ?? false) === true
+            && is_array($data['items'] ?? null);
+
+        if (! $valid) {
             throw new GenerationException('app.bilibili_is_temporarily_unavailable');
         }
 

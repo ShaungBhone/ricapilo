@@ -10,13 +10,35 @@ use Illuminate\Validation\Rule;
 
 class EditorSettings
 {
-    public const LAYOUTS = ['fit', 'fill', 'split', 'three', 'four', 'picture-in-picture', 'screen-share', 'gameplay'];
+    public const array LAYOUTS = ['fit', 'fill', 'split', 'three', 'four', 'picture-in-picture', 'screen-share', 'gameplay'];
 
-    public const STYLES = ['clean-bottom', 'boxed-minimal', 'bold-center', 'karaoke-highlight'];
+    public const array STYLES = ['clean-bottom', 'boxed-minimal', 'bold-center', 'karaoke-highlight'];
 
     public function defaults(Project $project): array
     {
-        return ['version' => 1, 'aspectRatio' => $project->format === 'landscape' ? '16:9' : '9:16', 'layout' => 'fill', 'slots' => [['assetId' => $project->media_path ? 'source' : null, 'mode' => 'fill', 'x' => 0.5, 'y' => 0.5, 'scale' => 1, 'visible' => true]], 'textOverlays' => [], 'videoVisible' => true, 'captionsVisible' => true, 'audio' => ['sourceMuted' => true, 'sourceVolume' => 1, 'narrationVolume' => 1, 'musicAssetId' => null, 'musicVolume' => 0.22]];
+        return [
+            'version' => 1,
+            'aspectRatio' => $project->format === 'landscape' ? '16:9' : '9:16',
+            'layout' => 'fill',
+            'slots' => [[
+                'assetId' => $project->media_path ? 'source' : null,
+                'mode' => 'fill',
+                'x' => 0.5,
+                'y' => 0.5,
+                'scale' => 1,
+                'visible' => true,
+            ]],
+            'textOverlays' => [],
+            'videoVisible' => true,
+            'captionsVisible' => true,
+            'audio' => [
+                'sourceMuted' => true,
+                'sourceVolume' => 1,
+                'narrationVolume' => 1,
+                'musicAssetId' => null,
+                'musicVolume' => 0.22,
+            ],
+        ];
     }
 
     public function validate(array $settings, Project $project): array

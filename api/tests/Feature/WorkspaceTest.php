@@ -40,14 +40,27 @@ class WorkspaceTest extends TestCase
 
     private function catalog(): void
     {
-        Http::fake(['*/models*' => Http::response(['data' => [['id' => 'test/chat', 'name' => 'Chat'], ['id' => 'test/stt', 'name' => 'Transcriber'], ['id' => 'test/tts', 'name' => 'Voice', 'supported_voices' => ['test-voice']]]])]);
+        Http::fake(['*/models*' => Http::response(['data' => [
+            ['id' => 'test/chat', 'name' => 'Chat'],
+            ['id' => 'test/stt', 'name' => 'Transcriber'],
+            ['id' => 'test/tts', 'name' => 'Voice', 'supported_voices' => ['test-voice']],
+        ]])]);
     }
 
     public function test_public_signup_creates_an_unverified_non_admin_user_and_sends_verification(): void
     {
         config(['recap.email_verification_required' => true]);
         Notification::fake();
-        $this->postJson('/api/v1/auth/register', ['name' => 'New user', 'email' => 'new@example.com', 'password' => 'GoodPassword123', 'password_confirmation' => 'GoodPassword123', 'is_admin' => true])->assertCreated()->assertJsonPath('email_verified_at', null)->assertJsonMissingPath('password');
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'New user',
+            'email' => 'new@example.com',
+            'password' => 'GoodPassword123',
+            'password_confirmation' => 'GoodPassword123',
+            'is_admin' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('email_verified_at', null)
+            ->assertJsonMissingPath('password');
         $u = User::first();
         $this->assertFalse((bool) $u->is_admin);
         Notification::assertSentTo($u, VerifyEmail::class);
@@ -60,7 +73,14 @@ class WorkspaceTest extends TestCase
         config(['recap.email_verification_required' => false]);
         Notification::fake();
         Process::fake(['*' => Process::result(output: json_encode(['ok' => true, 'items' => []]))]);
-        $this->postJson('/api/v1/auth/register', ['name' => 'New user', 'email' => 'new@example.com', 'password' => 'GoodPassword123', 'password_confirmation' => 'GoodPassword123'])->assertCreated()->assertJsonPath('email_verified_at', null);
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'New user',
+            'email' => 'new@example.com',
+            'password' => 'GoodPassword123',
+            'password_confirmation' => 'GoodPassword123',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('email_verified_at', null);
         Notification::assertNothingSent();
         $this->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('email_verification_required', false);
         $this->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'bilibili'])->assertOk();
@@ -70,7 +90,9 @@ class WorkspaceTest extends TestCase
     {
         config(['recap.email_verification_required' => false]);
         $u = User::factory()->unverified()->create();
-        $this->artisan('recap:admin', ['email' => $u->email])->expectsOutput('Administrator access granted.')->assertSuccessful();
+        $this->artisan('recap:admin', ['email' => $u->email])
+            ->expectsOutput('Administrator access granted.')
+            ->assertSuccessful();
         $this->assertTrue((bool) $u->fresh()->is_admin);
         $this->assertNull($u->fresh()->email_verified_at);
     }
@@ -79,7 +101,9 @@ class WorkspaceTest extends TestCase
     {
         config(['recap.email_verification_required' => true]);
         $u = User::factory()->unverified()->create();
-        $this->artisan('recap:admin', ['email' => $u->email])->expectsOutput('Verify this account first.')->assertFailed();
+        $this->artisan('recap:admin', ['email' => $u->email])
+            ->expectsOutput('Verify this account first.')
+            ->assertFailed();
         $this->assertFalse((bool) $u->fresh()->is_admin);
         $this->actingAs($u)->getJson('/api/v1/auth/me')->assertJsonPath('email_verification_required', true);
     }
@@ -117,7 +141,15 @@ class WorkspaceTest extends TestCase
     {
         $u = User::factory()->create();
         $other = Assistant::factory()->create();
-        $this->actingAs($u)->postJson('/api/v1/projects', ['title' => 'Test', 'assistant_id' => $other->id, 'source' => 'upload', 'format' => 'vertical', 'target_seconds' => 60])->assertUnprocessable();
+        $this->actingAs($u)
+            ->postJson('/api/v1/projects', [
+                'title' => 'Test',
+                'assistant_id' => $other->id,
+                'source' => 'upload',
+                'format' => 'vertical',
+                'target_seconds' => 60,
+            ])
+            ->assertUnprocessable();
         $this->getJson('/api/v1/admin')->assertForbidden();
         $this->putJson('/api/v1/admin', ['disabled_models' => []])->assertForbidden();
     }
@@ -139,15 +171,29 @@ class WorkspaceTest extends TestCase
         Queue::fake();
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        $response = $this->actingAs($user)->postJson('/api/v1/projects', ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true]);
-        $response->assertCreated()->assertJsonPath('status', 'queued')->assertJsonPath('stage', 'script')->assertJsonPath('has_media', false)->assertJsonMissingPath('generate_script');
+        $response = $this->actingAs($user)->postJson('/api/v1/projects', [
+            'title' => 'Selected video',
+            'assistant_id' => $assistant->id,
+            'source' => 'youtube',
+            'source_id' => 'abcdefghijk',
+            'format' => 'vertical',
+            'target_seconds' => 60,
+            'generate_script' => true,
+        ]);
+        $response->assertCreated()
+            ->assertJsonPath('status', 'queued')
+            ->assertJsonPath('stage', 'script')
+            ->assertJsonPath('has_media', false)
+            ->assertJsonMissingPath('generate_script');
         $id = $response->json('id');
         $this->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('status', 'queued');
         $this->getJson('/api/v1/projects/'.$id)->assertOk();
         $this->postJson('/api/v1/projects/'.$id.'/prepare')->assertConflict();
         $this->postJson('/api/v1/projects/'.$id.'/generate', ['stage' => 'script'])->assertConflict();
         Queue::assertPushed(ProcessProject::class, 1);
-        Queue::assertPushed(ProcessProject::class, fn (ProcessProject $job): bool => $job->projectId === $id && $job->stage === 'script' && $job->afterCommit);
+        Queue::assertPushed(ProcessProject::class, fn (ProcessProject $job): bool => $job->projectId === $id
+            && $job->stage === 'script'
+            && $job->afterCommit);
     }
 
     public function test_script_creation_validates_credentials_and_enabled_owned_assistant_before_saving(): void
@@ -156,13 +202,26 @@ class WorkspaceTest extends TestCase
         Queue::fake();
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        $data = ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'bilibili', 'source_id' => 'BV1xx411c7mD', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true];
-        $this->actingAs($user)->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('key');
+        $data = [
+            'title' => 'Selected video',
+            'assistant_id' => $assistant->id,
+            'source' => 'bilibili',
+            'source_id' => 'BV1xx411c7mD',
+            'format' => 'vertical',
+            'target_seconds' => 60,
+            'generate_script' => true,
+        ];
+        $this->actingAs($user)
+            ->postJson('/api/v1/projects', $data)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('key');
         config(['ai.providers.openrouter.key' => 'test-env-key']);
         $assistant->update(['enabled' => false]);
         $this->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('assistant_id');
         $other = Assistant::factory()->create();
-        $this->postJson('/api/v1/projects', [...$data, 'assistant_id' => $other->id])->assertUnprocessable()->assertJsonValidationErrors('assistant_id');
+        $this->postJson('/api/v1/projects', [...$data, 'assistant_id' => $other->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('assistant_id');
         $this->assertDatabaseCount('projects', 0);
         Queue::assertNothingPushed();
     }
@@ -173,11 +232,23 @@ class WorkspaceTest extends TestCase
         config(['recap.email_verification_required' => true]);
         $user = User::factory()->unverified()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        $data = ['title' => 'Manual project', 'assistant_id' => $assistant->id, 'source' => 'upload', 'transcript' => 'Source text', 'format' => 'vertical', 'target_seconds' => 60];
+        $data = [
+            'title' => 'Manual project',
+            'assistant_id' => $assistant->id,
+            'source' => 'upload',
+            'transcript' => 'Source text',
+            'format' => 'vertical',
+            'target_seconds' => 60,
+        ];
         $this->actingAs($user)->postJson('/api/v1/projects', [...$data, 'generate_script' => true])->assertForbidden();
         $this->assertDatabaseCount('projects', 0);
-        $this->postJson('/api/v1/projects', $data)->assertCreated()->assertJsonPath('status', 'draft')->assertJsonPath('stage', null);
-        $this->postJson('/api/v1/projects', [...$data, 'generate_script' => false])->assertCreated()->assertJsonPath('status', 'draft');
+        $this->postJson('/api/v1/projects', $data)
+            ->assertCreated()
+            ->assertJsonPath('status', 'draft')
+            ->assertJsonPath('stage', null);
+        $this->postJson('/api/v1/projects', [...$data, 'generate_script' => false])
+            ->assertCreated()
+            ->assertJsonPath('status', 'draft');
         Queue::assertNothingPushed();
     }
 
@@ -190,7 +261,17 @@ class WorkspaceTest extends TestCase
         RecapWriter::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        $response = $this->actingAs($user)->postJson('/api/v1/projects', ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true])->assertCreated();
+        $response = $this->actingAs($user)
+            ->postJson('/api/v1/projects', [
+                'title' => 'Selected video',
+                'assistant_id' => $assistant->id,
+                'source' => 'youtube',
+                'source_id' => 'abcdefghijk',
+                'format' => 'vertical',
+                'target_seconds' => 60,
+                'generate_script' => true,
+            ])
+            ->assertCreated();
         $id = $response->json('id');
         Process::fake(function ($process) use ($id) {
             if (in_array('--no-playlist', $process->command, true)) {
@@ -203,7 +284,15 @@ class WorkspaceTest extends TestCase
             return Process::result();
         });
         (new ProcessProject($id, 'script'))->handle(app(OpenRouter::class), app(Media::class));
-        $this->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('status', 'script_ready')->assertJsonPath('transcript', 'A faithful source transcript.')->assertJsonPath('script', 'မြန်မာ အနှစ်ချုပ်')->assertJsonPath('has_media', true)->assertJsonPath('editor_settings.slots.0.assetId', 'source')->assertJsonPath('has_audio', false)->assertJsonPath('has_video', false);
+        $this->getJson('/api/v1/projects/'.$id)
+            ->assertOk()
+            ->assertJsonPath('status', 'script_ready')
+            ->assertJsonPath('transcript', 'A faithful source transcript.')
+            ->assertJsonPath('script', 'မြန်မာ အနှစ်ချုပ်')
+            ->assertJsonPath('has_media', true)
+            ->assertJsonPath('editor_settings.slots.0.assetId', 'source')
+            ->assertJsonPath('has_audio', false)
+            ->assertJsonPath('has_video', false);
         RecapWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'A faithful source transcript.'));
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/audio/speech'));
         Queue::assertPushed(ProcessProject::class, 1);
@@ -216,7 +305,15 @@ class WorkspaceTest extends TestCase
         Process::fake(['*' => Process::result(exitCode: 1)]);
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        $project = Project::factory()->create(['user_id' => $user->id, 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'transcript' => null, 'stage' => 'script', 'status' => 'queued']);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'assistant_id' => $assistant->id,
+            'source' => 'youtube',
+            'source_id' => 'abcdefghijk',
+            'transcript' => null,
+            'stage' => 'script',
+            'status' => 'queued',
+        ]);
         $job = new ProcessProject($project->id, 'script');
         try {
             $job->handle(app(OpenRouter::class), app(Media::class));
@@ -225,12 +322,25 @@ class WorkspaceTest extends TestCase
             $job->failed($generationException);
         }
 
-        $this->actingAs($user)->withHeader('Accept-Language', 'my')->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('status', 'failed')->assertJsonPath('source_unavailable', true);
-        $this->withHeader('Accept-Language', 'en')->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('source_unavailable', true);
-        $this->postJson('/api/v1/projects/'.$project->id.'/generate', ['stage' => 'script'])->assertAccepted()->assertJsonPath('source_unavailable', false);
+        $this->actingAs($user)
+            ->withHeader('Accept-Language', 'my')
+            ->getJson('/api/v1/projects/'.$project->id)
+            ->assertOk()
+            ->assertJsonPath('status', 'failed')
+            ->assertJsonPath('source_unavailable', true);
+        $this->withHeader('Accept-Language', 'en')
+            ->getJson('/api/v1/projects/'.$project->id)
+            ->assertOk()
+            ->assertJsonPath('source_unavailable', true);
+        $this->postJson('/api/v1/projects/'.$project->id.'/generate', ['stage' => 'script'])
+            ->assertAccepted()
+            ->assertJsonPath('source_unavailable', false);
         Queue::assertPushed(ProcessProject::class, 1);
         $job->failed(new GenerationException('Provider request failed'));
-        $this->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('source_unavailable', false)->assertJsonPath('error', 'Provider request failed');
+        $this->getJson('/api/v1/projects/'.$project->id)
+            ->assertOk()
+            ->assertJsonPath('source_unavailable', false)
+            ->assertJsonPath('error', 'Provider request failed');
     }
 
     public function test_unexpected_job_failures_store_a_generic_error_instead_of_internal_details(): void
@@ -244,7 +354,14 @@ class WorkspaceTest extends TestCase
     public function test_changing_script_invalidates_audio_video_and_captions(): void
     {
         $u = User::factory()->create();
-        $p = Project::factory()->create(['user_id' => $u->id, 'script' => 'old', 'audio_path' => 'old.mp3', 'video_path' => 'old.mp4', 'captions' => [['text' => 'old']], 'status' => 'ready']);
+        $p = Project::factory()->create([
+            'user_id' => $u->id,
+            'script' => 'old',
+            'audio_path' => 'old.mp3',
+            'video_path' => 'old.mp4',
+            'captions' => [['text' => 'old']],
+            'status' => 'ready',
+        ]);
         $this->actingAs($u)->patchJson('/api/v1/projects/'.$p->id, ['script' => 'အသစ်'])->assertOk();
         $p->refresh();
         $this->assertNull($p->audio_path);
@@ -256,7 +373,14 @@ class WorkspaceTest extends TestCase
     {
         Queue::fake();
         $u = User::factory()->create();
-        $p = Project::factory()->create(['user_id' => $u->id, 'script' => 'old', 'audio_path' => 'old.mp3', 'video_path' => 'old.mp4', 'captions' => [['text' => 'old']], 'status' => 'ready']);
+        $p = Project::factory()->create([
+            'user_id' => $u->id,
+            'script' => 'old',
+            'audio_path' => 'old.mp3',
+            'video_path' => 'old.mp4',
+            'captions' => [['text' => 'old']],
+            'status' => 'ready',
+        ]);
         $this->actingAs($u)->postJson('/api/v1/projects/'.$p->id.'/generate', ['stage' => 'script'])->assertAccepted();
         $p->refresh();
         $this->assertNull($p->script);
@@ -268,7 +392,12 @@ class WorkspaceTest extends TestCase
     public function test_changing_caption_style_keeps_audio_and_invalidates_video(): void
     {
         $u = User::factory()->create();
-        $p = Project::factory()->create(['user_id' => $u->id, 'audio_path' => 'old.mp3', 'video_path' => 'old.mp4', 'status' => 'ready']);
+        $p = Project::factory()->create([
+            'user_id' => $u->id,
+            'audio_path' => 'old.mp3',
+            'video_path' => 'old.mp4',
+            'status' => 'ready',
+        ]);
         $this->actingAs($u)->patchJson('/api/v1/projects/'.$p->id, ['caption_style' => 'boxed-minimal'])->assertOk();
         $this->assertSame('audio_ready', $p->fresh()->status);
         $this->assertNull($p->fresh()->video_path);
@@ -294,7 +423,10 @@ class WorkspaceTest extends TestCase
         AssistantChat::fake(['မင်္ဂလာပါ'])->preventStrayPrompts();
         $u = User::factory()->create();
         $a = Assistant::factory()->create(['user_id' => $u->id]);
-        $this->actingAs($u)->postJson('/api/v1/talk', ['assistant_id' => $a->id, 'text' => 'Hello', 'speak' => false])->assertOk()->assertJsonPath('conversation.messages.1.content', 'မင်္ဂလာပါ');
+        $this->actingAs($u)
+            ->postJson('/api/v1/talk', ['assistant_id' => $a->id, 'text' => 'Hello', 'speak' => false])
+            ->assertOk()
+            ->assertJsonPath('conversation.messages.1.content', 'မင်္ဂလာပါ');
         $this->assertDatabaseCount('conversations', 1);
     }
 
@@ -305,8 +437,20 @@ class WorkspaceTest extends TestCase
         $user = User::factory()->create();
         $original = Assistant::factory()->create(['user_id' => $user->id]);
         $other = Assistant::factory()->create(['user_id' => $user->id]);
-        $conversation = Conversation::create(['user_id' => $user->id, 'assistant_id' => $original->id, 'title' => 'Hello', 'messages' => [['role' => 'user', 'content' => 'Hello']]]);
-        $this->actingAs($user)->postJson('/api/v1/talk', ['assistant_id' => $other->id, 'conversation_id' => $conversation->id, 'text' => 'Next'])->assertUnprocessable()->assertJsonValidationErrors('conversation_id');
+        $conversation = Conversation::create([
+            'user_id' => $user->id,
+            'assistant_id' => $original->id,
+            'title' => 'Hello',
+            'messages' => [['role' => 'user', 'content' => 'Hello']],
+        ]);
+        $this->actingAs($user)
+            ->postJson('/api/v1/talk', [
+                'assistant_id' => $other->id,
+                'conversation_id' => $conversation->id,
+                'text' => 'Next',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('conversation_id');
         $this->assertCount(1, $conversation->fresh()->messages);
     }
 
@@ -315,7 +459,12 @@ class WorkspaceTest extends TestCase
         Transcription::fake()->preventStrayTranscriptions();
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id, 'enabled' => false]);
-        $this->actingAs($user)->post('/api/v1/transcribe', ['assistant_id' => $assistant->id, 'audio' => UploadedFile::fake()->create('voice.wav', 10, 'audio/wav')], ['Accept' => 'application/json'])->assertNotFound();
+        $this->actingAs($user)
+            ->post('/api/v1/transcribe', [
+                'assistant_id' => $assistant->id,
+                'audio' => UploadedFile::fake()->create('voice.wav', 10, 'audio/wav'),
+            ], ['Accept' => 'application/json'])
+            ->assertNotFound();
     }
 
     public function test_admin_settings_are_readable_and_writable_by_admins(): void
@@ -323,13 +472,20 @@ class WorkspaceTest extends TestCase
         $admin = User::factory()->create();
         $admin->forceFill(['is_admin' => true])->save();
         $this->actingAs($admin)->getJson('/api/v1/admin')->assertOk()->assertJsonPath('disabled_models', []);
-        $this->putJson('/api/v1/admin', ['disabled_models' => ['test/chat']])->assertOk()->assertJsonPath('disabled_models', ['test/chat']);
+        $this->putJson('/api/v1/admin', ['disabled_models' => ['test/chat']])
+            ->assertOk()
+            ->assertJsonPath('disabled_models', ['test/chat']);
     }
 
     public function test_signed_relative_verification_link_works_through_the_frontend_proxy(): void
     {
         $u = User::factory()->unverified()->create();
-        $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(30), ['id' => $u->id, 'hash' => sha1($u->email)], false);
+        $url = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(30),
+            ['id' => $u->id, 'hash' => sha1($u->email)],
+            false,
+        );
         $this->actingAs($u)->get($url)->assertRedirect(config('recap.frontend_url'));
         $this->assertNotNull($u->fresh()->email_verified_at);
     }
@@ -345,7 +501,12 @@ class WorkspaceTest extends TestCase
 
             return true;
         });
-        $this->postJson('/api/v1/auth/reset', ['email' => $u->email, 'token' => $token, 'password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123'])->assertOk();
+        $this->postJson('/api/v1/auth/reset', [
+            'email' => $u->email,
+            'token' => $token,
+            'password' => 'NewPassword123',
+            'password_confirmation' => 'NewPassword123',
+        ])->assertOk();
         $this->assertTrue(Hash::check('NewPassword123', $u->fresh()->password));
         $this->postJson('/api/v1/auth/forgot', ['email' => 'missing@example.com'])->assertOk();
     }

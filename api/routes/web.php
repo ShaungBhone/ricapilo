@@ -18,7 +18,10 @@ Route::prefix('api/v1')->group(function (): void {
         Route::post('/auth/reset', [AuthController::class, 'reset']);
     });
     Route::middleware('auth')->group(function (): void {
-        Route::get('/auth/me', fn (Request $r) => response()->json([...$r->user()->toArray(), 'email_verification_required' => (bool) config('recap.email_verification_required')]));
+        Route::get('/auth/me', fn (Request $r) => response()->json([
+            ...$r->user()->toArray(),
+            'email_verification_required' => (bool) config('recap.email_verification_required'),
+        ]));
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $r): Redirector|RedirectResponse {
             $r->fulfill();
@@ -55,8 +58,10 @@ Route::prefix('api/v1')->group(function (): void {
         Route::put('/admin', [WorkspaceController::class, 'saveAdmin']);
         Route::middleware('verified')->group(function (): void {
             Route::post('/discover', [WorkspaceController::class, 'discover'])->middleware('throttle:discovery');
-            Route::post('/projects/{id}/generate', [WorkspaceController::class, 'generate'])->middleware('throttle:generation');
-            Route::post('/assistants/{id}/preview', [WorkspaceController::class, 'previewVoice'])->middleware('throttle:generation');
+            Route::post('/projects/{id}/generate', [WorkspaceController::class, 'generate'])
+                ->middleware('throttle:generation');
+            Route::post('/assistants/{id}/preview', [WorkspaceController::class, 'previewVoice'])
+                ->middleware('throttle:generation');
             Route::post('/talk', [WorkspaceController::class, 'talk'])->middleware('throttle:generation');
             Route::post('/transcribe', [WorkspaceController::class, 'transcribe'])->middleware('throttle:generation');
         });

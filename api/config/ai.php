@@ -147,6 +147,9 @@ return [
             'key' => env('OPENROUTER_API_KEY'),
             'http_referer' => env('FRONTEND_URL', 'http://localhost:3000'),
             'x_title' => env('APP_NAME', 'Ricapilo'),
+            'models' => [
+                'reranking' => ['default' => env('OPENROUTER_RERANK_MODEL') ?: 'cohere/rerank-4-pro'],
+            ],
         ],
 
         'typesafe' => [

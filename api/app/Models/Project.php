@@ -11,7 +11,29 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['user_id', 'assistant_id', 'title', 'source', 'source_id', 'source_url', 'transcript', 'script', 'status', 'stage', 'error', 'audio_path', 'video_path', 'media_path', 'captions', 'format', 'target_seconds', 'usage', 'caption_style', 'editor_settings', 'editor_assets'])]
+#[Fillable([
+    'user_id',
+    'assistant_id',
+    'title',
+    'source',
+    'source_id',
+    'source_url',
+    'transcript',
+    'script',
+    'status',
+    'stage',
+    'error',
+    'audio_path',
+    'video_path',
+    'media_path',
+    'captions',
+    'format',
+    'target_seconds',
+    'usage',
+    'caption_style',
+    'editor_settings',
+    'editor_assets',
+])]
 #[Hidden(['media_path', 'audio_path', 'video_path', 'editor_assets'])]
 class Project extends Model
 {
@@ -21,7 +43,15 @@ class Project extends Model
 
     protected function sourceUnavailable(): Attribute
     {
-        return Attribute::make(get: fn (): bool => $this->status === 'failed' && in_array($this->getRawOriginal('error'), ['app.upload_a_video_or_transcript_to_continue', 'app.this_platform_did_not_provide_usable_media_upload_the_video_or_paste_its_transcript', 'app.could_not_extract_audio_from_this_source', 'app.the_source_has_no_audio'], true));
+        $sourceErrors = [
+            'app.upload_a_video_or_transcript_to_continue',
+            'app.this_platform_did_not_provide_usable_media_upload_the_video_or_paste_its_transcript',
+            'app.could_not_extract_audio_from_this_source',
+            'app.the_source_has_no_audio',
+        ];
+
+        return Attribute::make(get: fn (): bool => $this->status === 'failed'
+            && in_array($this->getRawOriginal('error'), $sourceErrors, true));
     }
 
     protected function hasAudio(): Attribute
@@ -46,6 +76,12 @@ class Project extends Model
 
     protected function casts(): array
     {
-        return ['editor_settings' => 'array', 'editor_assets' => 'array', 'captions' => 'array', 'usage' => 'array', 'target_seconds' => 'integer'];
+        return [
+            'editor_settings' => 'array',
+            'editor_assets' => 'array',
+            'captions' => 'array',
+            'usage' => 'array',
+            'target_seconds' => 'integer',
+        ];
     }
 }

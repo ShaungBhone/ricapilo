@@ -45,7 +45,12 @@ class WorkspaceController extends Controller
     {
         $disabledModels = $this->disabledModels();
 
-        return response()->json(array_values(array_filter($ai->models(), fn (array $model): bool => ! in_array($model['id'], $disabledModels, true))));
+        $models = array_filter(
+            $ai->models(),
+            fn (array $model): bool => ! in_array($model['id'], $disabledModels, true),
+        );
+
+        return response()->json(array_values($models));
     }
 
     /** @return Collection<int, Assistant> */
@@ -61,7 +66,9 @@ class WorkspaceController extends Controller
             $ai->checkModel($validated[$key], $kind);
         }
 
-        $assistant = $id ? Assistant::where('user_id', $request->user()->id)->findOrFail($id) : new Assistant(['user_id' => $request->user()->id]);
+        $assistant = $id
+            ? Assistant::where('user_id', $request->user()->id)->findOrFail($id)
+            : new Assistant(['user_id' => $request->user()->id]);
         $assistant->fill($validated)->save();
 
         return response()->json($assistant, $id ? 200 : 201);
@@ -79,20 +86,39 @@ class WorkspaceController extends Controller
         $validated = $request->validated();
         $criteria = $discovery->intent($validated['prompt']);
         $warnings = [];
+        $intentReady = false;
         if (! empty($validated['assistant_id'])) {
             $assistant = Assistant::where('user_id', $request->user()->id)->findOrFail($validated['assistant_id']);
             try {
-                $criteria = $discovery->intent($validated['prompt'], $ai->discoveryIntent($assistant->llm_model, $validated['prompt']));
+                $intent = $ai->discoveryIntent($assistant->llm_model, $validated['prompt']);
+                $criteria = $discovery->intent($validated['prompt'], $intent);
+                $intentReady = true;
             } catch (GenerationException|ValidationException|ConnectionException $exception) {
-                Log::warning('Discovery intent unavailable; using prompt parser.', ['exception_type' => $exception::class]);
+                Log::warning('Discovery intent unavailable; using prompt parser.', [
+                    'exception_type' => $exception::class,
+                ]);
                 $warnings[] = __('app.video_search_unavailable_please_try_again');
             }
         }
 
         $result = $discovery->search($criteria['query'], $validated['platform'] ?? 'all', true, $criteria);
+        $shouldRerank = $intentReady
+            && $criteria['mode'] === 'topic'
+            && $criteria['query'] !== ''
+            && count($result['videos']) > 1;
+        if ($shouldRerank) {
+            $result['videos'] = $ai->rerankVideos($validated['prompt'], $result['videos']);
+        }
+
         $searchUnavailable = $result['videos'] === [] && ($warnings !== [] || $result['warnings'] !== []);
 
-        return response()->json(['query' => $criteria['query'], ...$result, 'warnings' => $searchUnavailable ? [__('app.video_search_unavailable_please_try_again')] : []]);
+        $responseWarnings = $searchUnavailable ? [__('app.video_search_unavailable_please_try_again')] : [];
+
+        return response()->json([
+            'query' => $criteria['query'],
+            ...$result,
+            'warnings' => $responseWarnings,
+        ]);
     }
 
     public function projects(Request $request): LengthAwarePaginator
@@ -124,8 +150,13 @@ class WorkspaceController extends Controller
         $generateScript = (bool) ($validated['generate_script'] ?? false);
         unset($validated['generate_script']);
         if ($generateScript) {
-            abort_if(config('recap.email_verification_required') && ! $request->user()->hasVerifiedEmail(), 403, __('Your email address is not verified.'));
-            if (! Assistant::where('user_id', $request->user()->id)->where('enabled', true)->whereKey($validated['assistant_id'])->exists()) {
+            $unverified = config('recap.email_verification_required') && ! $request->user()->hasVerifiedEmail();
+            abort_if($unverified, 403, __('Your email address is not verified.'));
+            $hasEnabledAssistant = Assistant::where('user_id', $request->user()->id)
+                ->where('enabled', true)
+                ->whereKey($validated['assistant_id'])
+                ->exists();
+            if (! $hasEnabledAssistant) {
                 throw ValidationException::withMessages(['assistant_id' => __('app.choose_an_enabled_assistant')]);
             }
 
@@ -133,7 +164,12 @@ class WorkspaceController extends Controller
         }
 
         $project = DB::transaction(function () use ($request, $validated, $generateScript): Project {
-            $project = Project::create(['user_id' => $request->user()->id, ...$validated, 'status' => $generateScript ? 'queued' : 'draft', 'stage' => $generateScript ? 'script' : null]);
+            $project = Project::create([
+                'user_id' => $request->user()->id,
+                ...$validated,
+                'status' => $generateScript ? 'queued' : 'draft',
+                'stage' => $generateScript ? 'script' : null,
+            ]);
             if ($generateScript) {
                 ProcessProject::dispatch($project->id, 'script')->afterCommit();
             }
@@ -150,7 +186,8 @@ class WorkspaceController extends Controller
         $validated = $request->validated();
         DB::transaction(function () use ($project, $validated, $editor): void {
             $locked = Project::lockForUpdate()->findOrFail($project->id);
-            abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, __('app.wait_for_the_current_generation_to_finish'));
+            $busy = in_array($locked->status, ['queued', 'processing', 'rendering']);
+            abort_if($busy, 409, __('app.wait_for_the_current_generation_to_finish'));
             if (isset($validated['editor_settings'])) {
                 $validated['editor_settings'] = $editor->validate($validated['editor_settings'], $locked);
             }
@@ -162,7 +199,11 @@ class WorkspaceController extends Controller
                 }
             }
 
-            $changes = array_filter($validated, fn (mixed $value, string $key): bool => $value != $locked->$key, ARRAY_FILTER_USE_BOTH);
+            $changes = array_filter(
+                $validated,
+                fn (mixed $value, string $key): bool => $value != $locked->$key,
+                ARRAY_FILTER_USE_BOTH,
+            );
             $locked->fill($changes);
             if (array_key_exists('script', $changes)) {
                 $locked->audio_path = null;
@@ -179,7 +220,8 @@ class WorkspaceController extends Controller
                 $locked->status = 'draft';
             }
 
-            if (array_intersect(array_keys($changes), ['title', 'format', 'caption_style', 'captions', 'editor_settings'])) {
+            $videoFields = ['title', 'format', 'caption_style', 'captions', 'editor_settings'];
+            if (array_intersect(array_keys($changes), $videoFields)) {
                 $locked->video_path = null;
                 if ($locked->audio_path) {
                     $locked->status = 'audio_ready';
@@ -203,8 +245,27 @@ class WorkspaceController extends Controller
                 abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409);
                 $oldPath = $locked->media_path;
                 $settings = $locked->editor_settings ?? $editor->defaults($locked);
-                $settings['slots'][0] = ['assetId' => 'source', 'mode' => $settings['slots'][0]['mode'], 'x' => 0.5, 'y' => 0.5, 'scale' => 1, 'visible' => true];
-                $locked->update(['media_path' => $path, 'source' => 'upload', 'transcript' => null, 'script' => null, 'audio_path' => null, 'video_path' => null, 'captions' => null, 'editor_settings' => $settings, 'status' => 'draft', 'stage' => null, 'error' => null]);
+                $settings['slots'][0] = [
+                    'assetId' => 'source',
+                    'mode' => $settings['slots'][0]['mode'],
+                    'x' => 0.5,
+                    'y' => 0.5,
+                    'scale' => 1,
+                    'visible' => true,
+                ];
+                $locked->update([
+                    'media_path' => $path,
+                    'source' => 'upload',
+                    'transcript' => null,
+                    'script' => null,
+                    'audio_path' => null,
+                    'video_path' => null,
+                    'captions' => null,
+                    'editor_settings' => $settings,
+                    'status' => 'draft',
+                    'stage' => null,
+                    'error' => null,
+                ]);
 
                 return $oldPath;
             });
@@ -230,7 +291,8 @@ class WorkspaceController extends Controller
 
         DB::transaction(function () use ($project, $stage): void {
             $locked = Project::lockForUpdate()->findOrFail($project->id);
-            abort_if(in_array($locked->status, ['queued', 'processing', 'rendering']), 409, __('app.generation_is_already_running'));
+            $busy = in_array($locked->status, ['queued', 'processing', 'rendering']);
+            abort_if($busy, 409, __('app.generation_is_already_running'));
             if ($stage === 'audio') {
                 abort_unless($locked->script, 422, __('app.generate_and_review_the_script_first'));
             }
@@ -262,7 +324,9 @@ class WorkspaceController extends Controller
         if ($kind === 'script') {
             abort_unless($project->script, 404);
 
-            return response($project->script)->header('Content-Type', 'text/plain; charset=utf-8')->header('Content-Disposition', 'attachment; filename="recap.txt"');
+            return response($project->script)
+                ->header('Content-Type', 'text/plain; charset=utf-8')
+                ->header('Content-Disposition', 'attachment; filename="recap.txt"');
         }
 
         $path = match ($kind) {
@@ -272,7 +336,11 @@ class WorkspaceController extends Controller
         };
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return response()->file(Storage::disk('local')->path($path), ['Content-Disposition' => 'inline; filename="recap.'.($kind === 'audio' ? 'mp3' : 'mp4').'"']);
+        $extension = $kind === 'audio' ? 'mp3' : 'mp4';
+
+        return response()->file(Storage::disk('local')->path($path), [
+            'Content-Disposition' => 'inline; filename="recap.'.$extension.'"',
+        ]);
     }
 
     public function deleteProject(Request $request, int $id): Response
@@ -298,10 +366,13 @@ class WorkspaceController extends Controller
     public function talk(TalkRequest $request, OpenRouter $ai): JsonResponse
     {
         $validated = $request->validated();
-        $assistant = Assistant::where('user_id', $request->user()->id)->where('enabled', true)->findOrFail($validated['assistant_id']);
+        $assistant = Assistant::where('user_id', $request->user()->id)
+            ->where('enabled', true)
+            ->findOrFail($validated['assistant_id']);
         $text = $validated['text'] ?? '';
         if ($request->hasFile('audio')) {
-            $text = $ai->transcribe($assistant->stt_model, Transcription::fromUpload($request->file('audio')), 'my')['text'];
+            $upload = Transcription::fromUpload($request->file('audio'));
+            $text = $ai->transcribe($assistant->stt_model, $upload, 'my')['text'];
         }
 
         if (! trim($text)) {
@@ -309,10 +380,20 @@ class WorkspaceController extends Controller
         }
 
         $conversation = empty($validated['conversation_id'])
-            ? new Conversation(['user_id' => $request->user()->id, 'assistant_id' => $assistant->id, 'title' => mb_substr($text, 0, 80), 'messages' => []])
-            : Conversation::where('user_id', $request->user()->id)->where('assistant_id', $assistant->id)->findOrFail($validated['conversation_id']);
+            ? new Conversation([
+                'user_id' => $request->user()->id,
+                'assistant_id' => $assistant->id,
+                'title' => mb_substr($text, 0, 80),
+                'messages' => [],
+            ])
+            : Conversation::where('user_id', $request->user()->id)
+                ->where('assistant_id', $assistant->id)
+                ->findOrFail($validated['conversation_id']);
         $messages = $conversation->messages ?? [];
-        $history = array_map(fn (array $message): Message => new Message($message['role'], $message['content']), array_slice($messages, -19));
+        $history = array_map(
+            fn (array $message): Message => new Message($message['role'], $message['content']),
+            array_slice($messages, -19),
+        );
         $answer = $ai->prompt(new AssistantChat($assistant->instructions, $history), $assistant->llm_model, $text);
         $messages[] = ['role' => 'user', 'content' => $text];
         $messages[] = ['role' => 'assistant', 'content' => $answer['text']];
@@ -324,21 +405,35 @@ class WorkspaceController extends Controller
             $audio = base64_encode($ai->speech($assistant->tts_model, $assistant->voice, $answer['text']));
         }
 
-        return response()->json(['conversation' => $conversation, 'audio' => $audio, 'text' => $answer['text'], 'usage' => $answer['usage']]);
+        return response()->json([
+            'conversation' => $conversation,
+            'audio' => $audio,
+            'text' => $answer['text'],
+            'usage' => $answer['usage'],
+        ]);
     }
 
     public function previewVoice(Request $request, int $id, OpenRouter $ai): JsonResponse
     {
-        $assistant = Assistant::where('user_id', $request->user()->id)->where('enabled', true)->findOrFail($id);
+        $assistant = Assistant::where('user_id', $request->user()->id)
+            ->where('enabled', true)
+            ->findOrFail($id);
+        $sample = 'မင်္ဂလာပါ။ သင့်ဇာတ်လမ်းကို မြန်မာဘာသာဖြင့် ပြောပြပေးပါမယ်။';
 
-        return response()->json(['audio' => base64_encode($ai->speech($assistant->tts_model, $assistant->voice, 'မင်္ဂလာပါ။ သင့်ဇာတ်လမ်းကို မြန်မာဘာသာဖြင့် ပြောပြပေးပါမယ်။'))]);
+        return response()->json([
+            'audio' => base64_encode($ai->speech($assistant->tts_model, $assistant->voice, $sample)),
+        ]);
     }
 
     public function transcribe(TranscribeRequest $request, OpenRouter $ai): JsonResponse
     {
-        $assistant = Assistant::where('user_id', $request->user()->id)->where('enabled', true)->findOrFail($request->validated('assistant_id'));
+        $assistant = Assistant::where('user_id', $request->user()->id)
+            ->where('enabled', true)
+            ->findOrFail($request->validated('assistant_id'));
 
-        return response()->json($ai->transcribe($assistant->stt_model, Transcription::fromUpload($request->file('audio')), 'my'));
+        $upload = Transcription::fromUpload($request->file('audio'));
+
+        return response()->json($ai->transcribe($assistant->stt_model, $upload, 'my'));
     }
 
     public function admin(): JsonResponse
@@ -350,14 +445,20 @@ class WorkspaceController extends Controller
 
     public function saveAdmin(SaveAdminSettingsRequest $request): JsonResponse
     {
-        DB::table('site_settings')->updateOrInsert(['key' => 'disabled_models'], ['value' => json_encode($request->validated('disabled_models'))]);
+        DB::table('site_settings')->updateOrInsert(
+            ['key' => 'disabled_models'],
+            ['value' => json_encode($request->validated('disabled_models'))],
+        );
 
         return $this->adminSettings();
     }
 
     private function adminSettings(): JsonResponse
     {
-        return response()->json(['youtube_configured' => (bool) config('recap.youtube_key'), 'disabled_models' => $this->disabledModels()]);
+        return response()->json([
+            'youtube_configured' => (bool) config('recap.youtube_key'),
+            'disabled_models' => $this->disabledModels(),
+        ]);
     }
 
     /** @return list<string> */
