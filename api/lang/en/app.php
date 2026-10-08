@@ -28,7 +28,7 @@ return [
     'video_rendering_failed_check_the_renderer_service' => 'Video rendering failed. Check the renderer service.',
     'rendered_output_was_not_found' => 'Rendered output was not found.',
     'generation_failed_check_your_providers_and_retry' => 'Generation failed. Check your providers and retry.',
-    'connect_your_openrouter_key_in_settings' => 'Connect your OpenRouter key in Settings.',
+    'connect_your_openrouter_key_in_settings' => 'Configure OPENROUTER_API_KEY in the server .env file.',
     'the_model_catalog_is_temporarily_unavailable' => 'The model catalog is temporarily unavailable.',
     'this_model_is_unavailable_or_disabled' => 'This model is unavailable or disabled.',
     'ai_generation_failed_check_your_key_credits_and_model_settings' => 'AI generation failed. Check your key, credits, and model settings.',

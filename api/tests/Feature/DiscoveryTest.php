@@ -11,6 +11,7 @@ use App\Services\OpenRouter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -27,6 +28,7 @@ class DiscoveryTest extends TestCase
         Http::preventStrayRequests();
         Process::preventStrayProcesses();
         config(['recap.youtube_key' => 'test-youtube-key']);
+        DB::table('site_settings')->insert(['key' => 'youtube_key', 'value' => 'ignored-legacy-key']);
     }
 
     private function video(string $id = 'abcdefghijk', string $duration = 'PT1M', ?string $published = null): array
@@ -57,7 +59,7 @@ class DiscoveryTest extends TestCase
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
         Log::spy();
-        $this->mock(OpenRouter::class)->shouldReceive('discoveryIntent')->once()->withArgs(fn ($viewer, $model, $prompt): bool => $viewer->id === $user->id && $model === $assistant->llm_model && $prompt === 'space')->andThrow(new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings'));
+        $this->mock(OpenRouter::class)->shouldReceive('discoveryIntent')->once()->withArgs(fn ($model, $prompt): bool => $model === $assistant->llm_model && $prompt === 'space')->andThrow(new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings'));
         Http::fake(['*/youtube/v3/search*' => Http::response(['items' => [['id' => ['videoId' => 'abcdefghijk']]]]), '*/youtube/v3/videos*' => Http::response(['items' => [$this->video()]])]);
 
         $this->actingAs($user)->withHeader('Accept-Language', 'en')->postJson('/api/v1/discover', ['prompt' => 'space', 'platform' => 'youtube', 'assistant_id' => $assistant->id])->assertOk()->assertJsonPath('query', 'space')->assertJsonPath('criteria.mode', 'topic')->assertJsonCount(1, 'videos')->assertJsonCount(0, 'warnings');

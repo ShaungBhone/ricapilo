@@ -14,7 +14,6 @@ use App\Services\OpenRouterAgent;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -34,6 +33,7 @@ class WorkspaceTest extends TestCase
     {
         parent::setUp();
         Http::preventStrayRequests();
+        config(['ai.providers.openrouter.key' => 'test-env-key']);
     }
 
     private function catalog(): void
@@ -103,18 +103,12 @@ class WorkspaceTest extends TestCase
         $this->getJson('/api/v1/projects')->assertJsonPath('total', 0);
     }
 
-    public function test_api_keys_are_encrypted_and_never_returned(): void
+    public function test_api_key_management_endpoints_are_removed(): void
     {
-        $u = User::factory()->create();
-        $secret = 'sk-or-test-secret-value';
-        $this->actingAs($u)->putJson('/api/v1/keys', ['secret' => $secret])->assertOk();
-        $raw = DB::table('credentials')->value('secret');
-        $this->assertNotSame($secret, $raw);
-        $this->assertSame($secret, Credential::first()->secret);
-        $this->getJson('/api/v1/keys')->assertOk()->assertJsonMissingPath('0.secret');
-        $this->assertStringNotContainsString($secret, $this->getJson('/api/v1/keys')->getContent());
-        $this->deleteJson('/api/v1/keys')->assertNoContent();
-        $this->assertDatabaseCount('credentials', 0);
+        $this->actingAs(User::factory()->create());
+        $this->getJson('/api/v1/keys')->assertNotFound();
+        $this->putJson('/api/v1/keys', ['secret' => 'replacement-key'])->assertNotFound();
+        $this->deleteJson('/api/v1/keys')->assertNotFound();
     }
 
     public function test_foreign_assistant_cannot_be_used_and_only_admins_change_integrations(): void
@@ -158,12 +152,14 @@ class WorkspaceTest extends TestCase
 
     public function test_script_creation_validates_credentials_and_enabled_owned_assistant_before_saving(): void
     {
+        config(['ai.providers.openrouter.key' => null]);
         Queue::fake();
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
         $data = ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'bilibili', 'source_id' => 'BV1xx411c7mD', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true];
         $this->actingAs($user)->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('key');
         Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
+        config(['ai.providers.openrouter.key' => 'test-env-key']);
         $assistant->update(['enabled' => false]);
         $this->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('assistant_id');
         $other = Assistant::factory()->create();

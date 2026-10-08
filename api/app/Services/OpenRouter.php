@@ -3,9 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\GenerationException;
-use App\Models\Credential;
-use App\Models\User;
-use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -14,45 +12,29 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Messages\Message;
+use Laravel\Ai\PendingResponses\PendingTranscriptionGeneration;
 use Laravel\Ai\Providers\OpenRouterProvider;
-use Laravel\Ai\Transcription;
 use Throwable;
 
 class OpenRouter
 {
-    public function client(User $user): PendingRequest
+    public function ensureConfigured(): void
     {
-        $credential = $this->credential($user);
-
-        return Http::baseUrl('https://openrouter.ai/api/v1')->withToken($credential->secret)->acceptJson()->timeout(90)->connectTimeout(15)->withHeaders(['HTTP-Referer' => config('recap.frontend_url'), 'X-Title' => 'Ricapilo']);
-    }
-
-    private function credential(User $user): Credential
-    {
-        $credential = Credential::where('user_id', $user->id)->where('provider', 'openrouter')->first();
-        if (! $credential) {
+        $key = config('ai.providers.openrouter.key');
+        if (! is_string($key) || trim($key) === '') {
             throw ValidationException::withMessages(['key' => __('app.connect_your_openrouter_key_in_settings')]);
         }
-
-        return $credential;
     }
 
-    private function provider(User $user, OpenRouterGateway $gateway): OpenRouterProvider
+    private function configureProvider(OpenRouterGateway $gateway): void
     {
-        $provider = Ai::build([
-            'name' => 'recap_user_'.$user->id,
-            'driver' => 'openrouter',
-            'key' => $this->credential($user)->secret,
-            'http_referer' => config('recap.frontend_url'),
-            'x_title' => 'Ricapilo',
-            'headers' => ['X-Title' => 'Ricapilo'],
-        ]);
+        $this->ensureConfigured();
+        $provider = Ai::instance('openrouter');
         assert($provider instanceof OpenRouterProvider);
         $provider->useTextGateway($gateway);
         $provider->useTranscriptionGateway($gateway);
         $provider->useAudioGateway($gateway);
 
-        return $provider;
     }
 
     public function models(): array
@@ -82,17 +64,17 @@ class OpenRouter
         }
     }
 
-    public function chat(User $user, string $model, array $messages): array
+    public function chat(string $model, array $messages): array
     {
         $this->checkModel($model, 'text');
         $gateway = app(OpenRouterGateway::class);
-        $provider = $this->provider($user, $gateway);
+        $this->configureProvider($gateway);
         $instructions = ($messages[0]['role'] ?? null) === 'system' ? array_shift($messages)['content'] : '';
         $prompt = array_pop($messages)['content'];
         $history = array_map(fn (array $message): Message => new Message($message['role'], $message['content']), $messages);
 
         try {
-            $response = (new OpenRouterAgent($instructions, $history))->prompt($prompt, provider: [$provider->name() => $model], timeout: 90);
+            $response = (new OpenRouterAgent($instructions, $history))->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90);
         } catch (Throwable) {
             throw new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings');
         }
@@ -101,7 +83,7 @@ class OpenRouter
             throw new GenerationException('app.the_model_returned_no_text');
         }
 
-        $usage = $gateway->responseData !== null ? ($gateway->responseData['usage'] ?? []) : [
+        $usage = $response->raw instanceof Response ? ($response->raw->json('usage') ?? []) : [
             'prompt_tokens' => $response->usage->inputTokens,
             'completion_tokens' => $response->usage->outputTokens,
             'total_tokens' => $response->usage->totalTokens(),
@@ -110,36 +92,30 @@ class OpenRouter
         return ['text' => $response->text, 'usage' => $usage];
     }
 
-    public function discoveryIntent(User $user, string $model, string $prompt): array
+    public function discoveryIntent(string $model, string $prompt): array
     {
         $this->checkModel($model, 'text');
-        $provider = $this->provider($user, app(OpenRouterGateway::class));
+        $this->configureProvider(app(OpenRouterGateway::class));
         try {
-            return (new DiscoveryIntentAgent)->prompt($prompt, provider: [$provider->name() => $model], timeout: 90)->toArray();
+            return (new DiscoveryIntentAgent)->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90)->toArray();
         } catch (Throwable) {
             throw new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings');
         }
     }
 
-    public function transcribe(User $user, string $model, string $bytes, string $format, ?string $language = null): array
+    public function transcribe(string $model, PendingTranscriptionGeneration $request, ?string $language = null): array
     {
         $this->checkModel($model, 'transcription');
         $gateway = app(OpenRouterGateway::class);
-        $provider = $this->provider($user, $gateway);
+        $this->configureProvider($gateway);
 
         try {
-            $mime = match ($format) {
-                'mp3' => 'audio/mpeg',
-                'm4a' => 'audio/mp4',
-                default => 'audio/'.$format,
-            };
-            $request = Transcription::fromBase64(base64_encode($bytes), $mime)
-                ->timeout(90)->withProviderOptions(['response_format' => 'verbose_json', 'timestamp_granularities' => ['segment']]);
+            $request->timeout(90)->withProviderOptions(['response_format' => 'verbose_json', 'timestamp_granularities' => ['segment']]);
             if ($language) {
                 $request->language($language);
             }
 
-            $response = $request->generate(provider: [$provider->name() => $model]);
+            $response = $request->generate(provider: 'openrouter', model: $model);
             if (trim($response->text) === '' || isset($gateway->responseData['error']) || ($gateway->responseData !== null && ! is_string($gateway->responseData['text'] ?? null))) {
                 throw new GenerationException('app.transcription_failed_check_the_selected_model_and_source_audio');
             }
@@ -150,14 +126,14 @@ class OpenRouter
         }
     }
 
-    public function speech(User $user, string $model, string $voice, string $text): string
+    public function speech(string $model, string $voice, string $text): string
     {
         $this->checkModel($model, 'speech');
         $gateway = app(OpenRouterGateway::class);
-        $provider = $this->provider($user, $gateway);
+        $this->configureProvider($gateway);
 
         try {
-            $response = Audio::of($text)->voice($voice)->timeout(90)->generate(provider: [$provider->name() => $model]);
+            $response = Audio::of($text)->voice($voice)->timeout(90)->generate(provider: 'openrouter', model: $model);
             $bytes = base64_decode($response->audio, true);
             if ($bytes === false || $bytes === '' || $gateway->responseData !== null || str_contains($gateway->responseContentType ?? '', 'json')) {
                 throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');

@@ -30,9 +30,6 @@ Route::prefix('api/v1')->group(function (): void {
 
             return ['message' => __('app.verification_email_sent')];
         })->middleware('throttle:3,1');
-        Route::get('/keys', [WorkspaceController::class, 'keys']);
-        Route::put('/keys', [WorkspaceController::class, 'saveKey']);
-        Route::delete('/keys', [WorkspaceController::class, 'deleteKey']);
         Route::get('/models', [WorkspaceController::class, 'models']);
         Route::get('/assistants', [WorkspaceController::class, 'assistants']);
         Route::post('/assistants', [WorkspaceController::class, 'saveAssistant']);

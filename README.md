@@ -13,12 +13,12 @@ sh scripts/setup.sh
 docker compose up --build -d
 ```
 
-The setup script generates a private `.env` containing a unique application key, database password, and renderer token. It retains an existing `.env`. Do not replace APP_KEY after storing encrypted user credentials.
+The setup script generates a private `.env` containing a unique application key, database password, and renderer token. It retains an existing `.env`. Keep APP_KEY stable to preserve application encryption.
 
 - App: http://localhost:3000
 - Development email inbox: http://localhost:8025
 
-Register an account in the app. Email verification is optional for now. To require it later, set `EMAIL_VERIFICATION_REQUIRED=true` in the root `.env` (or `api/.env` for local development) and restart the API and worker with the updated configuration. When required, open the verification email in Mailpit and follow its link in the same browser where you registered. Add your OpenRouter API key in Settings. Create an assistant with a text model, transcription model, speech model, and a supported voice ID. The model catalog is discovered dynamically; there are no hardcoded voice names.
+Register an account in the app. Email verification is optional for now. To require it later, set `EMAIL_VERIFICATION_REQUIRED=true` in the root `.env` (or `api/.env` for local development) and restart the API and worker with the updated configuration. When required, open the verification email in Mailpit and follow its link in the same browser where you registered. Set `OPENROUTER_API_KEY` and `YOUTUBE_API_KEY` in the root `.env` for Docker, or `api/.env` for local development. Restart the API and worker after changing these values; for Docker, run `docker compose up -d --force-recreate api worker`. Create an assistant with a text model, transcription model, speech model, and a supported voice ID. The model catalog is discovered dynamically; there are no hardcoded voice names.
 
 The local mail inbox is for development. Configure a real SMTP service for deployment.
 
@@ -54,7 +54,7 @@ Discovery supports YouTube and Bilibili. Broad popularity requests use platform 
 
 ### Get a YouTube Data API key
 
-YouTube discovery requires one administrator-managed key. Ricapilo searches public videos, so an API key is sufficient; an OAuth client or consent screen is not needed.
+YouTube discovery requires one environment-configured key. Ricapilo searches public videos, so an API key is sufficient; an OAuth client or consent screen is not needed.
 
 1. Sign in to the [Google Cloud Console](https://console.cloud.google.com/) with your Google account. Create a project (for example, `Ricapilo`) or select an existing one.
 2. Open **APIs & Services → Library**, search for **YouTube Data API v3**, and click **Enable** for that project.
@@ -73,9 +73,9 @@ Register an account in the app, then promote it using the same email address (ve
 docker compose exec api php artisan recap:admin you@example.com
 ```
 
-Refresh the app or sign in again after promotion. Open **Administration**, paste the key into **Video discovery API key**, and click **Save**. The saved key takes effect immediately; no Docker rebuild or restart is needed. This enables YouTube discovery; retrieving a selected video's media still depends on source access.
+Set `YOUTUBE_API_KEY` in `.env` and recreate the API and worker containers. Administration shows configuration status and lets administrators disable individual model IDs.
 
-For local development without Docker, run `php artisan recap:admin you@example.com` from `api/` instead. Administrators can also disable individual model IDs. User-supplied API keys are encrypted and never returned by the API. Each user's assistants, projects, files, and conversation history are private.
+For local development without Docker, run `php artisan recap:admin you@example.com` from `api/` instead. Administrators can also disable individual model IDs. Provider API keys are read only from server environment configuration and never returned by the API. Each user's assistants, projects, files, and conversation history are private.
 
 ## Source access and generation behavior
 

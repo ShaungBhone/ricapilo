@@ -7,6 +7,10 @@ use Illuminate\Http\Client\Response;
 use Laravel\Ai\Gateway\OpenRouter\OpenRouterGateway as SdkOpenRouterGateway;
 use Laravel\Ai\Providers\Provider;
 
+/**
+ * Preserve provider metadata unavailable on SDK audio and transcription responses,
+ * and keep voice IDs selected from the model catalog unchanged.
+ */
 class OpenRouterGateway extends SdkOpenRouterGateway
 {
     /** @var array<string, mixed>|null */

@@ -10,7 +10,6 @@ import {
   Bot,
   Clapperboard,
   MessageSquare,
-  Settings,
   Shield,
 } from "lucide-react";
 import {
@@ -39,7 +38,6 @@ export function AppSidebar({ user }: { user: User }) {
       url: "/conversations",
       icon: MessageSquare,
     },
-    { title: t("workspace.settings"), url: "/settings", icon: Settings },
     ...(user.is_admin
       ? [{ title: t("workspace.administration"), url: "/admin", icon: Shield }]
       : []),

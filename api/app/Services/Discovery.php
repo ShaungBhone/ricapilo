@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -29,8 +27,7 @@ class Discovery
         $videos = [];
         $warnings = [];
         if ($platform !== 'bilibili') {
-            $secret = DB::table('site_settings')->where('key', 'youtube_key')->value('value');
-            $key = $secret ? Crypt::decryptString($secret) : config('recap.youtube_key');
+            $key = config('recap.youtube_key');
             if (! $key) {
                 Log::warning('Discovery source not configured.', ['provider' => 'youtube']);
                 $warnings[] = __('app.an_administrator_must_add_a_youtube_api_key_to_search_youtube');

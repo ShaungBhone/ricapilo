@@ -6,6 +6,8 @@ x-app-env: &app-env
   APP_KEY: ${APP_KEY:?Run scripts/setup.sh first}
   APP_URL: ${FRONTEND_URL:-http://localhost:3000}/api/backend
   FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
   EMAIL_VERIFICATION_REQUIRED: ${EMAIL_VERIFICATION_REQUIRED:-false}
   DB_CONNECTION: pgsql
   DB_HOST: database

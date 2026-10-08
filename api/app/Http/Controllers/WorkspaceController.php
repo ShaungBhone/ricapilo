@@ -6,7 +6,6 @@ use App\Exceptions\GenerationException;
 use App\Jobs\ProcessProject;
 use App\Models\Assistant;
 use App\Models\Conversation;
-use App\Models\Credential;
 use App\Models\Project;
 use App\Services\Discovery;
 use App\Services\EditorSettings;
@@ -14,35 +13,15 @@ use App\Services\Media;
 use App\Services\OpenRouter;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Laravel\Ai\Transcription;
 
 class WorkspaceController extends Controller
 {
-    public function keys(Request $r): mixed
-    {
-        return Credential::where('user_id', $r->user()->id)->get()->map(fn ($k): array => ['provider' => $k->provider, 'configured' => true, 'updated_at' => $k->updated_at]);
-    }
-
-    public function saveKey(Request $r): mixed
-    {
-        $v = $r->validate(['secret' => 'required|string|min:15|max:500']);
-        Credential::updateOrCreate(['user_id' => $r->user()->id, 'provider' => 'openrouter'], $v);
-
-        return response()->json(['message' => __('app.key_saved_securely')]);
-    }
-
-    public function deleteKey(Request $r): mixed
-    {
-        Credential::where('user_id', $r->user()->id)->where('provider', 'openrouter')->delete();
-
-        return response()->noContent();
-    }
-
     public function models(OpenRouter $ai): mixed
     {
         $disabled = json_decode(DB::table('site_settings')->where('key', 'disabled_models')->value('value') ?? '[]', true);
@@ -83,7 +62,7 @@ class WorkspaceController extends Controller
         if (! empty($v['assistant_id'])) {
             $a = Assistant::where('user_id', $r->user()->id)->findOrFail($v['assistant_id']);
             try {
-                $criteria = $search->intent($v['prompt'], $ai->discoveryIntent($r->user(), $a->llm_model, $v['prompt']));
+                $criteria = $search->intent($v['prompt'], $ai->discoveryIntent($a->llm_model, $v['prompt']));
             } catch (GenerationException|ValidationException|ConnectionException $exception) {
                 Log::warning('Discovery intent unavailable; using prompt parser.', ['exception_type' => $exception::class]);
                 $warnings[] = __('app.video_search_unavailable_please_try_again');
@@ -129,7 +108,7 @@ class WorkspaceController extends Controller
                 throw ValidationException::withMessages(['assistant_id' => __('app.choose_an_enabled_assistant')]);
             }
 
-            $ai->client($r->user());
+            $ai->ensureConfigured();
         }
 
         $project = DB::transaction(function () use ($r, $v, $generateScript): Project {
@@ -240,7 +219,7 @@ class WorkspaceController extends Controller
         $p = $this->project($r, $id);
         $v = $r->validate(['stage' => 'required|in:script,audio,video']);
         if ($v['stage'] !== 'video') {
-            $ai->client($r->user());
+            $ai->ensureConfigured();
         }
 
         DB::transaction(function () use ($p, $v): void {
@@ -315,7 +294,7 @@ class WorkspaceController extends Controller
         $text = $v['text'] ?? '';
         if ($r->hasFile('audio')) {
             $file = $r->file('audio');
-            $result = $ai->transcribe($r->user(), $a->stt_model, file_get_contents($file->path()), $file->extension(), 'my');
+            $result = $ai->transcribe($a->stt_model, Transcription::fromUpload($file), 'my');
             $text = $result['text'];
         }
 
@@ -326,14 +305,14 @@ class WorkspaceController extends Controller
         $c = empty($v['conversation_id']) ? new Conversation(['user_id' => $r->user()->id, 'assistant_id' => $a->id, 'title' => mb_substr($text, 0, 80), 'messages' => []]) : Conversation::where('user_id', $r->user()->id)->findOrFail($v['conversation_id']);
         $messages = $c->messages ?? [];
         $messages[] = ['role' => 'user', 'content' => $text];
-        $answer = $ai->chat($r->user(), $a->llm_model, [['role' => 'system', 'content' => 'Respond only in Burmese. '.$a->instructions], ...array_slice($messages, -20)]);
+        $answer = $ai->chat($a->llm_model, [['role' => 'system', 'content' => 'Respond only in Burmese. '.$a->instructions], ...array_slice($messages, -20)]);
         $messages[] = ['role' => 'assistant', 'content' => $answer['text']];
         $c->messages = $messages;
         $c->save();
 
         $audio = null;
         if ($r->boolean('speak')) {
-            $audio = base64_encode($ai->speech($r->user(), $a->tts_model, $a->voice, $answer['text']));
+            $audio = base64_encode($ai->speech($a->tts_model, $a->voice, $answer['text']));
         }
 
         return ['conversation' => $c, 'audio' => $audio, 'text' => $answer['text'], 'usage' => $answer['usage']];
@@ -343,7 +322,7 @@ class WorkspaceController extends Controller
     {
         $a = Assistant::where('user_id', $r->user()->id)->where('enabled', true)->findOrFail($id);
 
-        return ['audio' => base64_encode($ai->speech($r->user(), $a->tts_model, $a->voice, 'မင်္ဂလာပါ။ သင့်ဇာတ်လမ်းကို မြန်မာဘာသာဖြင့် ပြောပြပေးပါမယ်။'))];
+        return ['audio' => base64_encode($ai->speech($a->tts_model, $a->voice, 'မင်္ဂလာပါ။ သင့်ဇာတ်လမ်းကို မြန်မာဘာသာဖြင့် ပြောပြပေးပါမယ်။'))];
     }
 
     public function transcribe(Request $r, OpenRouter $ai): mixed
@@ -352,24 +331,20 @@ class WorkspaceController extends Controller
         $a = Assistant::where('user_id', $r->user()->id)->findOrFail($r->input('assistant_id'));
         $f = $r->file('audio');
 
-        return $ai->transcribe($r->user(), $a->stt_model, file_get_contents($f->path()), $f->extension(), 'my');
+        return $ai->transcribe($a->stt_model, Transcription::fromUpload($f), 'my');
     }
 
     public function admin(Request $r): mixed
     {
         abort_unless($r->user()->is_admin, 403);
 
-        return ['youtube_configured' => (bool) (DB::table('site_settings')->where('key', 'youtube_key')->value('value') ?? config('recap.youtube_key')), 'disabled_models' => json_decode(DB::table('site_settings')->where('key', 'disabled_models')->value('value') ?? '[]', true)];
+        return ['youtube_configured' => (bool) config('recap.youtube_key'), 'disabled_models' => json_decode(DB::table('site_settings')->where('key', 'disabled_models')->value('value') ?? '[]', true)];
     }
 
     public function saveAdmin(Request $r): mixed
     {
         abort_unless($r->user()->is_admin, 403);
-        $v = $r->validate(['youtube_key' => 'nullable|string|max:500', 'disabled_models' => 'required|array', 'disabled_models.*' => 'string|max:200']);
-        if (! empty($v['youtube_key'])) {
-            DB::table('site_settings')->updateOrInsert(['key' => 'youtube_key'], ['value' => Crypt::encryptString($v['youtube_key'])]);
-        }
-
+        $v = $r->validate(['youtube_key' => 'prohibited', 'disabled_models' => 'required|array', 'disabled_models.*' => 'string|max:200']);
         DB::table('site_settings')->updateOrInsert(['key' => 'disabled_models'], ['value' => json_encode($v['disabled_models'])]);
 
         return $this->admin($r);

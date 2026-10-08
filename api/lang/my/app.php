@@ -28,7 +28,7 @@ return [
     'video_rendering_failed_check_the_renderer_service' => 'ဗီဒီယို ထုတ်မှု မအောင်မြင်ပါ။ Renderer ဝန်ဆောင်မှုကို စစ်ဆေးပါ။',
     'rendered_output_was_not_found' => 'ထုတ်ထားသော ဖိုင် မတွေ့ပါ။',
     'generation_failed_check_your_providers_and_retry' => 'ဖန်တီးမှု မအောင်မြင်ပါ။ Provider များကို စစ်ဆေးပြီး ထပ်ကြိုးစားပါ။',
-    'connect_your_openrouter_key_in_settings' => 'ဆက်တင်တွင် သင့် OpenRouter key ထည့်ပါ။',
+    'connect_your_openrouter_key_in_settings' => 'ဆာဗာ .env ဖိုင်တွင် OPENROUTER_API_KEY ထည့်ပါ။',
     'the_model_catalog_is_temporarily_unavailable' => 'Model စာရင်းကို လတ်တလော ရယူ၍မရပါ။',
     'this_model_is_unavailable_or_disabled' => 'ဤ model ကို အသုံးမပြုနိုင်ပါ သို့မဟုတ် ပိတ်ထားပါသည်။',
     'ai_generation_failed_check_your_key_credits_and_model_settings' => 'AI ဖန်တီးမှု မအောင်မြင်ပါ။ Key၊ credits နှင့် model ဆက်တင်များကို စစ်ဆေးပါ။',

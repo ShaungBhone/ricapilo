@@ -4,14 +4,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { api, json } from "@/lib/api";
 import { Field, FieldLabel, FieldGroup } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Feedback } from "@/components/feedback";
 export default function Admin() {
   const t = useTranslations();
 
-  const [key, setKey] = useState("");
   const [disabled, setDisabled] = useState("");
   const [message, setMessage] = useState("");
   const [allowed, setAllowed] = useState(false);
@@ -42,14 +40,12 @@ export default function Admin() {
               await api("/admin", {
                 method: "PUT",
                 body: json({
-                  youtube_key: key || null,
                   disabled_models: disabled
                     .split("\n")
                     .map((s) => s.trim())
                     .filter(Boolean),
                 }),
               });
-              setKey("");
               setMessage(t("administration.saved"));
             } catch (e) {
               setMessage((e as Error).message);
@@ -57,18 +53,6 @@ export default function Admin() {
           }}
         >
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="discovery-key">
-                {t("administration.videoDiscoveryApiKey")}
-              </FieldLabel>
-              <Input
-                id="discovery-key"
-                type="password"
-                autoComplete="off"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-              />
-            </Field>
             <Field>
               <FieldLabel htmlFor="disabled">
                 {t("administration.disabledModelIdsOnePerLine")}
