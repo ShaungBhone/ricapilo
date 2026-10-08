@@ -9,9 +9,10 @@
 **/*.tsbuildinfo
 .DS_Store
 
-# AI assistant files (Claude Code, OpenCode, Laravel Boost)
+# AI assistant files (Codex, Claude Code, OpenCode, Laravel Boost)
 **/.agents/
 **/.claude/
+**/.codex/
 **/.mcp.json
 **/opencode.json
 **/AGENTS.md
