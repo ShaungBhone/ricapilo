@@ -4,23 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Play, Pause, Maximize } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Player, type PlayerRef } from "@remotion/player";
-import {
-  AbsoluteFill,
-  Audio,
-  Loop,
-  Sequence,
-  Video,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { VideoComposition } from "./video-composition";
 import { API } from "@/lib/api";
 import type { EditorAsset, EditorDraft } from "@/lib/editor";
-import {
-  ratios,
-  regions,
-  placement,
-  captionAppearance,
-} from "@/lib/editor-core.mjs";
+import { ratios } from "@/lib/editor-core.mjs";
 export type DragChange = (
   kind: "slot" | "text",
   id: number | string,
@@ -124,169 +111,54 @@ function Composition({
   onDrag: DragChange;
   labels: { moveVideo: string; moveText: string };
 }) {
-  const { width, height } = useVideoConfig(),
-    frame = useCurrentFrame();
-  const settings = draft.editor_settings,
-    ms = (frame / 30) * 1000;
-  const caption = settings.captionsVisible
-    ? draft.captions.find((c) => ms >= c.startMs && ms < c.endMs)
-    : null;
-  const appearance = captionAppearance(draft.caption_style, width, height);
-  const src = (id: string) =>
-    `${API}/projects/${projectId}/assets/${id}/stream`;
-  const primary = assets.find((a) => a.id === settings.slots[0]?.assetId);
-  const music = assets.find((a) => a.id === settings.audio.musicAssetId);
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: "#050505",
-        fontFamily: "Noto Sans Myanmar, sans-serif",
-        color: "white",
-        overflow: "hidden",
-      }}
-    >
-      {settings.videoVisible &&
-        regions(settings.layout, width, height).map((region, i) => {
-          const slot = settings.slots[i],
-            asset = assets.find(
-              (a) => a.id === slot?.assetId && a.kind === "video",
-            );
-          if (!slot?.visible || !asset) return null;
-          const p = placement(region, asset, slot);
-          return (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                left: region.x,
-                top: region.y,
-                width: region.width,
-                height: region.height,
-                overflow: "hidden",
-                borderRadius: region.circle ? "50%" : undefined,
-                backgroundColor: "#050505",
-              }}
-            >
-              <Loop
-                durationInFrames={Math.max(1, Math.ceil(asset.duration * 30))}
+    <VideoComposition
+      draft={draft}
+      assets={assets.map((asset) => ({
+        ...asset,
+        src: `${API}/projects/${projectId}/assets/${asset.id}/stream`,
+      }))}
+      narrationSrc={
+        hasAudio
+          ? `${API}/projects/${projectId}/download/audio?v=${revision}`
+          : null
+      }
+      renderSlotControl={
+        tool === "Media" && !disabled
+          ? (i, p, slot) => (
+              <Draggable
+                label={`${labels.moveVideo} ${i + 1}`}
+                anchor={slot}
+                style={{
+                  position: "absolute",
+                  left: p.x,
+                  top: p.y,
+                  width: p.width,
+                  height: p.height,
+                  maxWidth: "none",
+                  border: "2px solid #bef264",
+                  background: "transparent",
+                }}
+                onDrag={(x, y, phase) => onDrag("slot", i, x, y, phase)}
+              />
+            )
+          : undefined
+      }
+      renderTextControl={
+        tool === "Text" && !disabled
+          ? (o, style) => (
+              <Draggable
+                label={labels.moveText}
+                anchor={o}
+                style={{ ...style, border: "1px dashed #bef264" }}
+                onDrag={(x, y, phase) => onDrag("text", o.id, x, y, phase)}
               >
-                <Video
-                  src={src(asset.id)}
-                  muted
-                  style={{
-                    position: "absolute",
-                    left: p.x,
-                    top: p.y,
-                    width: p.width,
-                    height: p.height,
-                    maxWidth: "none",
-                  }}
-                />
-              </Loop>
-              {tool === "Media" && !disabled && (
-                <Draggable
-                  label={`${labels.moveVideo} ${i + 1}`}
-                  anchor={slot}
-                  style={{
-                    position: "absolute",
-                    left: p.x,
-                    top: p.y,
-                    width: p.width,
-                    height: p.height,
-                    maxWidth: "none",
-                    border: "2px solid #bef264",
-                    background: "transparent",
-                  }}
-                  onDrag={(x, y, phase) => onDrag("slot", i, x, y, phase)}
-                />
-              )}
-            </div>
-          );
-        })}
-      {settings.textOverlays
-        .filter((o) => o.visible)
-        .map((o) => {
-          const style: React.CSSProperties = {
-            position: "absolute",
-            left: `${o.x * 100}%`,
-            top: `${o.y * 100}%`,
-            transform: `translate(${o.align === "left" ? "0" : o.align === "right" ? "-100%" : "-50%"},-50%)`,
-            width: "max-content",
-            maxWidth: "86%",
-            color: o.color,
-            fontSize: (o.fontSize * width) / 720,
-            fontWeight: o.bold ? 700 : 400,
-            lineHeight: 1.4,
-            textAlign: o.align,
-            whiteSpace: "pre-wrap",
-            background: o.background ? "rgba(0,0,0,.62)" : undefined,
-            padding: o.background ? 10 : 0,
-            border: tool === "Text" ? "1px dashed #bef264" : undefined,
-          };
-          return tool === "Text" && !disabled ? (
-            <Draggable
-              key={o.id}
-              label={labels.moveText}
-              anchor={o}
-              style={style}
-              onDrag={(x, y, phase) => onDrag("text", o.id, x, y, phase)}
-            >
-              {o.text}
-            </Draggable>
-          ) : (
-            <div key={o.id} style={style}>
-              {o.text}
-            </div>
-          );
-        })}
-      {caption && (
-        <div
-          style={{
-            position: "absolute",
-            left: appearance.x,
-            top: appearance.y,
-            transform: "translate(-50%,-50%)",
-            width: "86%",
-            textAlign: "center",
-            fontSize: appearance.fontSize,
-            fontWeight: appearance.bold ? 700 : 400,
-            lineHeight: 1.4,
-            color: appearance.color,
-            whiteSpace: "pre-wrap",
-            pointerEvents: "none",
-            textShadow: "0 1px 2px black",
-          }}
-        >
-          <span
-            style={{
-              background: appearance.background ? "rgba(0,0,0,.62)" : undefined,
-              padding: appearance.background ? 10 : 0,
-              boxDecorationBreak: "clone",
-            }}
-          >
-            {caption.text}
-          </span>
-        </div>
-      )}
-      {hasAudio && (
-        <Audio
-          src={`${API}/projects/${projectId}/download/audio?v=${revision}`}
-          volume={settings.audio.narrationVolume}
-        />
-      )}
-      {primary?.hasAudio && !settings.audio.sourceMuted && (
-        <Loop durationInFrames={Math.max(1, Math.ceil(primary.duration * 30))}>
-          <Audio src={src(primary.id)} volume={settings.audio.sourceVolume} />
-        </Loop>
-      )}
-      {music && (
-        <Sequence
-          durationInFrames={Math.max(1, Math.floor(music.duration * 30))}
-        >
-          <Audio src={src(music.id)} volume={settings.audio.musicVolume} />
-        </Sequence>
-      )}
-    </AbsoluteFill>
+                {o.text}
+              </Draggable>
+            )
+          : undefined
+      }
+    />
   );
 }
 export function EditorPreview({

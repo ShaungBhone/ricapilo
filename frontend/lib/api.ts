@@ -106,6 +106,7 @@ export type Project = {
   status: string;
   stage: string | null;
   error: string | null;
+  source_unavailable: boolean;
   format: "vertical" | "landscape";
   target_seconds: number;
   caption_style: string;

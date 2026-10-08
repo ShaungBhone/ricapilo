@@ -57,8 +57,9 @@ export default function Home() {
   useEffect(() => {
     api<Assistant[]>("/assistants")
       .then((a) => {
-        setAssistants(a.filter((x) => x.enabled));
-        if (a[0]) setAssistant(String(a[0].id));
+        const enabled = a.filter((x) => x.enabled);
+        setAssistants(enabled);
+        if (enabled[0]) setAssistant(String(enabled[0].id));
       })
       .catch((e) => setMessage(e.message));
   }, []);
@@ -125,6 +126,7 @@ export default function Home() {
           assistant_id: Number(assistant),
           format: "vertical",
           target_seconds: 60,
+          generate_script: true,
         }),
       });
       router.push(`/projects/${p.id}`);

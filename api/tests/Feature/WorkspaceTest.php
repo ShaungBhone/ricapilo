@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\GenerationException;
 use App\Jobs\ProcessProject;
 use App\Models\Assistant;
 use App\Models\Credential;
@@ -19,8 +20,10 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Transcription;
 use Tests\TestCase;
 
 class WorkspaceTest extends TestCase
@@ -134,6 +137,107 @@ class WorkspaceTest extends TestCase
         $this->postJson('/api/v1/projects/'.$p->id.'/generate', ['stage' => 'script'])->assertConflict();
         $this->patchJson('/api/v1/projects/'.$p->id, ['script' => 'new'])->assertConflict();
         Queue::assertPushed(ProcessProject::class, 1);
+    }
+
+    public function test_selected_video_creation_queues_one_script_job_and_refresh_does_not_queue_preparation(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
+        $response = $this->actingAs($user)->postJson('/api/v1/projects', ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true]);
+        $response->assertCreated()->assertJsonPath('status', 'queued')->assertJsonPath('stage', 'script')->assertJsonPath('has_media', false)->assertJsonMissingPath('generate_script');
+        $id = $response->json('id');
+        $this->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('status', 'queued');
+        $this->getJson('/api/v1/projects/'.$id)->assertOk();
+        $this->postJson('/api/v1/projects/'.$id.'/prepare')->assertConflict();
+        $this->postJson('/api/v1/projects/'.$id.'/generate', ['stage' => 'script'])->assertConflict();
+        Queue::assertPushed(ProcessProject::class, 1);
+        Queue::assertPushed(ProcessProject::class, fn (ProcessProject $job): bool => $job->projectId === $id && $job->stage === 'script' && $job->afterCommit);
+    }
+
+    public function test_script_creation_validates_credentials_and_enabled_owned_assistant_before_saving(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        $data = ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'bilibili', 'source_id' => 'BV1xx411c7mD', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true];
+        $this->actingAs($user)->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('key');
+        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
+        $assistant->update(['enabled' => false]);
+        $this->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('assistant_id');
+        $other = Assistant::factory()->create();
+        $this->postJson('/api/v1/projects', [...$data, 'assistant_id' => $other->id])->assertUnprocessable()->assertJsonValidationErrors('assistant_id');
+        $this->assertDatabaseCount('projects', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_script_creation_preserves_email_verification_and_manual_creation_behavior(): void
+    {
+        Queue::fake();
+        config(['recap.email_verification_required' => true]);
+        $user = User::factory()->unverified()->create();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        $data = ['title' => 'Manual project', 'assistant_id' => $assistant->id, 'source' => 'upload', 'transcript' => 'Source text', 'format' => 'vertical', 'target_seconds' => 60];
+        $this->actingAs($user)->postJson('/api/v1/projects', [...$data, 'generate_script' => true])->assertForbidden();
+        $this->assertDatabaseCount('projects', 0);
+        $this->postJson('/api/v1/projects', $data)->assertCreated()->assertJsonPath('status', 'draft')->assertJsonPath('stage', null);
+        $this->postJson('/api/v1/projects', [...$data, 'generate_script' => false])->assertCreated()->assertJsonPath('status', 'draft');
+        Queue::assertNothingPushed();
+    }
+
+    public function test_selected_video_is_downloaded_transcribed_and_script_generated_without_narration(): void
+    {
+        Queue::fake();
+        Storage::fake('local');
+        $this->catalog();
+        Transcription::fake(['A faithful source transcript.']);
+        OpenRouterAgent::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
+        $user = User::factory()->create();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
+        $response = $this->actingAs($user)->postJson('/api/v1/projects', ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true])->assertCreated();
+        $id = $response->json('id');
+        Process::fake(function ($process) use ($id) {
+            if (in_array('--no-playlist', $process->command, true)) {
+                $this->assertSame('https://www.youtube.com/watch?v=abcdefghijk', end($process->command));
+                Storage::disk('local')->put('projects/'.$id.'/source.mp4', 'source media');
+            } else {
+                Storage::disk('local')->put('projects/'.$id.'/chunks/part-000.mp3', 'source audio');
+            }
+
+            return Process::result();
+        });
+        (new ProcessProject($id, 'script'))->handle(app(OpenRouter::class), app(Media::class));
+        $this->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('status', 'script_ready')->assertJsonPath('transcript', 'A faithful source transcript.')->assertJsonPath('script', 'မြန်မာ အနှစ်ချုပ်')->assertJsonPath('has_media', true)->assertJsonPath('editor_settings.slots.0.assetId', 'source')->assertJsonPath('has_audio', false)->assertJsonPath('has_video', false);
+        OpenRouterAgent::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, 'A faithful source transcript.'));
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/audio/speech'));
+        Queue::assertPushed(ProcessProject::class, 1);
+    }
+
+    public function test_source_failures_are_distinguished_from_provider_failures_and_can_be_retried(): void
+    {
+        Queue::fake();
+        Storage::fake('local');
+        Process::fake(['*' => Process::result(exitCode: 1)]);
+        $user = User::factory()->create();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
+        $project = Project::factory()->create(['user_id' => $user->id, 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'transcript' => null, 'stage' => 'script', 'status' => 'queued']);
+        $job = new ProcessProject($project->id, 'script');
+        try {
+            $job->handle(app(OpenRouter::class), app(Media::class));
+            $this->fail('Download failure must stop script generation.');
+        } catch (GenerationException $error) {
+            $job->failed($error);
+        }
+
+        $this->actingAs($user)->withHeader('Accept-Language', 'my')->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('status', 'failed')->assertJsonPath('source_unavailable', true);
+        $this->withHeader('Accept-Language', 'en')->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('source_unavailable', true);
+        $this->postJson('/api/v1/projects/'.$project->id.'/generate', ['stage' => 'script'])->assertAccepted()->assertJsonPath('source_unavailable', false);
+        Queue::assertPushed(ProcessProject::class, 1);
+        $job->failed(new GenerationException('Provider request failed'));
+        $this->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('source_unavailable', false)->assertJsonPath('error', 'Provider request failed');
     }
 
     public function test_changing_script_invalidates_audio_video_and_captions(): void

@@ -17,7 +17,12 @@ class Project extends Model
 {
     use HasFactory;
 
-    protected $appends = ['has_audio', 'has_video', 'has_media'];
+    protected $appends = ['has_audio', 'has_video', 'has_media', 'source_unavailable'];
+
+    protected function sourceUnavailable(): Attribute
+    {
+        return Attribute::make(get: fn (): bool => $this->status === 'failed' && in_array($this->getRawOriginal('error'), ['app.upload_a_video_or_transcript_to_continue', 'app.this_platform_did_not_provide_usable_media_upload_the_video_or_paste_its_transcript', 'app.could_not_extract_audio_from_this_source', 'app.the_source_has_no_audio'], true));
+    }
 
     protected function hasAudio(): Attribute
     {

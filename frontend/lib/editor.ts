@@ -56,6 +56,30 @@ export const emptySlot = (
   assetId: string | null = null,
   mode: Slot["mode"] = "fill",
 ): Slot => ({ assetId, mode, x: 0.5, y: 0.5, scale: 1, visible: true });
+
+export function projectWorkflow(project: Project) {
+  const running = ["queued", "processing", "rendering"].includes(
+    project.status,
+  );
+  return {
+    running,
+    autoPrepare:
+      project.status === "draft" &&
+      !project.stage &&
+      !project.has_media &&
+      project.source !== "upload" &&
+      !project.transcript &&
+      !project.script,
+    progress:
+      project.stage === "prepare" ||
+      (project.stage === "script" && !project.has_media && !project.transcript)
+        ? ("importingVideo" as const)
+        : project.stage === "script"
+          ? ("generatingScript" as const)
+          : ("working" as const),
+    sourceFallback: !running && project.source_unavailable,
+  };
+}
 export function projectDraft(
   project: Project,
   assets: EditorAsset[],

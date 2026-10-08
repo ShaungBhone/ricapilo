@@ -11,3 +11,6 @@
 .agents/skills/
 
 !**/.env.example
+
+renderer/bundle/
+renderer/.remotion/

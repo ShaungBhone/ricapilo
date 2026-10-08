@@ -6,6 +6,7 @@ import {
   editHistory,
   moveHistory,
   reconcilePolling,
+  projectWorkflow,
 } from "./editor";
 import type { Project } from "./api";
 const project = {
@@ -22,6 +23,77 @@ test("legacy projects initialize without media and map existing format", () => {
   assert.equal(draft.editor_settings.aspectRatio, "16:9");
   assert.equal(draft.editor_settings.slots[0].assetId, null);
   assert.equal(draft.editor_settings.audio.sourceMuted, true);
+});
+test("queued and processing recap jobs never trigger competing source preparation", () => {
+  const selected = {
+    ...project,
+    source: "youtube",
+    has_media: false,
+    stage: "script",
+  } as Project;
+  for (const status of ["queued", "processing"]) {
+    const workflow = projectWorkflow({ ...selected, status });
+    assert.equal(workflow.running, true);
+    assert.equal(workflow.autoPrepare, false);
+    assert.equal(workflow.progress, "importingVideo");
+    assert.equal(workflow.sourceFallback, false);
+  }
+  assert.equal(
+    projectWorkflow({ ...selected, status: "processing", has_media: true })
+      .progress,
+    "generatingScript",
+  );
+  assert.equal(
+    projectWorkflow({
+      ...selected,
+      status: "processing",
+      transcript: "Pasted source",
+    }).progress,
+    "generatingScript",
+  );
+});
+test("failed projects require explicit retry and only source failures offer upload fallback", () => {
+  const failed = {
+    ...project,
+    source: "youtube",
+    status: "failed",
+    stage: "script",
+    has_media: false,
+    error: "Source unavailable",
+    source_unavailable: true,
+  } as Project;
+  assert.equal(projectWorkflow(failed).autoPrepare, false);
+  assert.equal(projectWorkflow(failed).sourceFallback, true);
+  assert.equal(
+    projectWorkflow({ ...failed, source_unavailable: false }).sourceFallback,
+    false,
+  );
+  assert.equal(
+    projectWorkflow({ ...failed, status: "queued" }).sourceFallback,
+    false,
+  );
+});
+test("only untouched legacy online drafts automatically prepare their source", () => {
+  const selected = {
+    ...project,
+    source: "youtube",
+    status: "draft",
+    stage: null,
+    has_media: false,
+  } as Project;
+  assert.equal(projectWorkflow(selected).autoPrepare, true);
+  for (const change of [
+    { source: "upload" },
+    { transcript: "Pasted source" },
+    { stage: "script" },
+    { status: "script_ready" },
+    { has_media: true },
+  ]) {
+    assert.equal(
+      projectWorkflow({ ...selected, ...change }).autoPrepare,
+      false,
+    );
+  }
 });
 test("undo/redo restore document edits and a new edit discards redo", () => {
   const first = projectDraft(project, []);

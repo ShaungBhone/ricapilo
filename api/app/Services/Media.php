@@ -28,12 +28,17 @@ class Media
         $relative = 'projects/'.$p->id.'/source.mp4';
         $path = Storage::disk('local')->path($relative);
         Storage::disk('local')->makeDirectory('projects/'.$p->id);
-        $result = Process::timeout(600)->run([config('recap.yt_dlp'), '--no-playlist', '--no-warnings', '--max-filesize', '300M', '--socket-timeout', '30', '--merge-output-format', 'mp4', '-f', 'best[ext=mp4]/best', '-o', $path, '--', $url]);
+        $result = Process::timeout(600)->run([config('recap.yt_dlp'), '--no-playlist', '--no-warnings', '--max-filesize', '300M', '--socket-timeout', '30', '--merge-output-format', 'mp4', '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best', '-o', $path, '--', $url]);
         if (! $result->successful() || ! is_file($path)) {
             throw new GenerationException('app.this_platform_did_not_provide_usable_media_upload_the_video_or_paste_its_transcript');
         }
 
-        $p->update(['media_path' => $relative]);
+        $settings = $p->editor_settings ?? app(EditorSettings::class)->defaults($p);
+        if (! $settings['slots'][0]['assetId']) {
+            $settings['slots'][0]['assetId'] = 'source';
+        }
+
+        $p->update(['media_path' => $relative, 'editor_settings' => $settings]);
 
         return $path;
     }

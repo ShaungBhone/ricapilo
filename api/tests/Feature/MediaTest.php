@@ -34,6 +34,7 @@ class MediaTest extends TestCase
         $path = app(Media::class)->acquire($project);
         $this->assertFileExists($path);
         $this->assertSame('projects/'.$project->id.'/source.mp4', $project->fresh()->media_path);
+        $this->assertSame('source', $project->fresh()->editor_settings['slots'][0]['assetId']);
         app(Media::class)->acquire($project->fresh());
         Process::assertRanTimes(fn ($p): bool => in_array('--no-playlist', $p->command, true), 1);
     }

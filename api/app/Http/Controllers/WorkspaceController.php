@@ -110,9 +110,9 @@ class WorkspaceController extends Controller
         return $this->project($r, $id);
     }
 
-    public function createProject(Request $r): mixed
+    public function createProject(Request $r, OpenRouter $ai): mixed
     {
-        $v = $r->validate(['title' => 'required|string|max:255', 'assistant_id' => ['required', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)], 'source' => 'required|in:upload,youtube,bilibili', 'source_id' => 'nullable|string|max:80|regex:/^[a-zA-Z0-9_-]+$/', 'transcript' => 'nullable|string|max:100000', 'format' => 'required|in:vertical,landscape', 'target_seconds' => 'required|integer|between:15,600']);
+        $v = $r->validate(['title' => 'required|string|max:255', 'assistant_id' => ['required', Rule::exists('assistants', 'id')->where('user_id', $r->user()->id)], 'source' => 'required|in:upload,youtube,bilibili', 'source_id' => 'nullable|string|max:80|regex:/^[a-zA-Z0-9_-]+$/', 'transcript' => 'nullable|string|max:100000', 'format' => 'required|in:vertical,landscape', 'target_seconds' => 'required|integer|between:15,600', 'generate_script' => 'sometimes|boolean']);
         if ($v['source'] !== 'upload' && empty($v['source_id'])) {
             throw ValidationException::withMessages(['source_id' => __('app.choose_a_video_first')]);
         }
@@ -121,7 +121,27 @@ class WorkspaceController extends Controller
             throw ValidationException::withMessages(['source_id' => __('app.choose_a_video_first')]);
         }
 
-        return response()->json(Project::create(['user_id' => $r->user()->id, ...$v]), 201);
+        $generateScript = (bool) ($v['generate_script'] ?? false);
+        unset($v['generate_script']);
+        if ($generateScript) {
+            abort_if(config('recap.email_verification_required') && ! $r->user()->hasVerifiedEmail(), 403, __('Your email address is not verified.'));
+            if (! Assistant::where('user_id', $r->user()->id)->where('enabled', true)->whereKey($v['assistant_id'])->exists()) {
+                throw ValidationException::withMessages(['assistant_id' => __('app.choose_an_enabled_assistant')]);
+            }
+
+            $ai->client($r->user());
+        }
+
+        $project = DB::transaction(function () use ($r, $v, $generateScript): Project {
+            $project = Project::create(['user_id' => $r->user()->id, ...$v, 'status' => $generateScript ? 'queued' : 'draft', 'stage' => $generateScript ? 'script' : null]);
+            if ($generateScript) {
+                ProcessProject::dispatch($project->id, 'script')->afterCommit();
+            }
+
+            return $project;
+        });
+
+        return response()->json($project->fresh(), 201);
     }
 
     public function updateProject(Request $r, int $id, EditorSettings $editor): mixed

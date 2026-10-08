@@ -84,6 +84,7 @@ services:
       context: .
       dockerfile: docker/renderer.Dockerfile
     environment:
+      RENDERER_ENGINE: ${RENDERER_ENGINE:-remotion}
       MEDIA_ROOT: /media
       RENDERER_TOKEN: ${RENDERER_TOKEN}
     volumes: [media:/media]

@@ -9,3 +9,5 @@
 **/storage/framework/views/*
 **/storage/framework/cache/*
 **/storage/app/private/*
+renderer/bundle
+renderer/.remotion

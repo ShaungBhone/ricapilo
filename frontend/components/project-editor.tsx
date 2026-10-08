@@ -33,6 +33,7 @@ import { api, API, json, type Project } from "@/lib/api";
 import {
   emptySlot,
   projectDraft,
+  projectWorkflow,
   changes,
   editHistory,
   moveHistory,
@@ -137,6 +138,8 @@ export function ProjectEditor({ id }: { id: string }) {
     [search, setSearch] = useState(""),
     [frame, setFrame] = useState(0),
     [duration, setDuration] = useState(0);
+  const [sourceTab, setSourceTab] = useState("script"),
+    [mobileTab, setMobileTab] = useState("source");
   const [mobile, setMobile] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const playerRef = useRef<PlayerRef | null>(null),
@@ -154,10 +157,7 @@ export function ProjectEditor({ id }: { id: string }) {
   const draft = history?.present;
   const dirty =
     !!draft && !!saved && Object.keys(changes(draft, saved)).length > 0;
-  const processing =
-    busy ||
-    (!!project &&
-      ["queued", "processing", "rendering"].includes(project.status));
+  const processing = busy || (!!project && projectWorkflow(project).running);
   const dirtyRef = useRef(dirty);
   useLayoutEffect(() => {
     dirtyRef.current = dirty;
@@ -195,13 +195,7 @@ export function ProjectEditor({ id }: { id: string }) {
       );
       setHistory(reconciled.history);
       setSaved(reconciled.saved);
-      if (
-        !prepared.current &&
-        !p.has_media &&
-        p.source !== "upload" &&
-        p.stage !== "prepare" &&
-        !["queued", "processing", "rendering"].includes(p.status)
-      ) {
+      if (!prepared.current && projectWorkflow(p).autoPrepare) {
         prepared.current = true;
         const preparedProject = await api<Project>(`/projects/${id}/prepare`, {
           method: "POST",
@@ -423,6 +417,10 @@ export function ProjectEditor({ id }: { id: string }) {
       </div>
     );
   const s = draft.editor_settings;
+  const workflow = projectWorkflow(project);
+  const sourceFallback = workflow.sourceFallback;
+  const manualSource = project.source === "upload" && !project.has_media;
+  const progress = t(workflow.running ? workflow.progress : "working");
   const seek = (ms: number) =>
     playerRef.current?.seekTo(
       Math.min(
@@ -447,7 +445,7 @@ export function ProjectEditor({ id }: { id: string }) {
     }));
   const sourcePanel = (
     <section className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4">
-      <Tabs defaultValue="script">
+      <Tabs value={sourceTab} onValueChange={setSourceTab}>
         <TabsList>
           <TabsTrigger value="transcript">{t("transcript")}</TabsTrigger>
           <TabsTrigger value="script">{t("script")}</TabsTrigger>
@@ -469,17 +467,20 @@ export function ProjectEditor({ id }: { id: string }) {
                 }
               />
             </Field>
-            <Button
-              variant="outline"
-              disabled={processing}
-              onClick={() => sourceInput.current?.click()}
-            >
-              <Film />
-              {pt("uploadSourceFile")}
-            </Button>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("transcriptFallback")}
-            </p>
+            {(manualSource || sourceFallback) && !processing && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => sourceInput.current?.click()}
+                >
+                  <Film data-icon="inline-start" />
+                  {pt("uploadSourceFile")}
+                </Button>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {t("transcriptFallback")}
+                </p>
+              </>
+            )}
           </FieldGroup>
         </TabsContent>
         <TabsContent value="script">
@@ -615,9 +616,6 @@ export function ProjectEditor({ id }: { id: string }) {
         >
           {pt("2GenerateNarration")}
         </Button>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {pt("eachAiRequestIsBilledToYourOpenrouter")}
-        </p>
       </div>
     </section>
   );
@@ -703,13 +701,15 @@ export function ProjectEditor({ id }: { id: string }) {
               <Plus />
               {t("addMedia")}
             </Button>
-            <Button
-              disabled={processing}
-              variant="outline"
-              onClick={() => sourceInput.current?.click()}
-            >
-              {t("replaceSourceButton")}
-            </Button>
+            {(project.has_media || manualSource || sourceFallback) &&
+              !processing && (
+                <Button
+                  variant="outline"
+                  onClick={() => sourceInput.current?.click()}
+                >
+                  {t(project.has_media ? "replaceSourceButton" : "uploadVideo")}
+                </Button>
+              )}
             <Button
               disabled={processing}
               variant="ghost"
@@ -1172,8 +1172,16 @@ export function ProjectEditor({ id }: { id: string }) {
       {!assets.some((a) => a.kind === "video") && (
         <div className="shrink-0 p-4">
           <Blank
-            title={t(processing ? "preparingVideo" : "noVideo")}
-            description={t("transcriptFallback")}
+            title={processing ? progress : t("noVideo")}
+            description={
+              processing
+                ? t("recapProgressDescription")
+                : project.transcript || project.script
+                  ? t("transcriptOnlyPreview")
+                  : sourceFallback || manualSource
+                    ? t("transcriptFallback")
+                    : t("selectedVideoAutomatic")
+            }
           />
         </div>
       )}
@@ -1197,14 +1205,11 @@ export function ProjectEditor({ id }: { id: string }) {
           onChange={(e) => edit((d) => ({ ...d, title: e.target.value }))}
         />
         <Badge variant="secondary">
-          {pt.has(project.status)
-            ? pt(project.status)
-            : t(
-                project.status === "processing" && project.stage === "prepare"
-                  ? "preparingVideo"
-                  : "status",
-                { status: project.status },
-              )}
+          {workflow.running
+            ? progress
+            : pt.has(project.status)
+              ? pt(project.status)
+              : t("status", { status: project.status })}
         </Badge>
         <span role="status" className="text-xs text-muted-foreground">
           {t(dirty ? "unsaved" : "saved")}
@@ -1291,39 +1296,60 @@ export function ProjectEditor({ id }: { id: string }) {
           {processing ? (
             <>
               <LoaderCircle className="size-4 animate-spin" />
-              {t(project.stage === "prepare" ? "preparingVideo" : "working")}
+              {progress}
             </>
           ) : (
             <>
-              <span className="min-w-0 flex-1">{project.error}</span>
-              {project.stage === "prepare" && (
+              <span className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
+                {project.error}
+              </span>
+              {["prepare", "script", "audio", "video"].includes(
+                project.stage ?? "",
+              ) && (
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() =>
-                    void operation(() =>
-                      api(`/projects/${id}/prepare`, { method: "POST" }),
-                    )
+                    project.stage === "prepare"
+                      ? void operation(() =>
+                          api(`/projects/${id}/prepare`, { method: "POST" }),
+                        )
+                      : void generate(project.stage!)
                   }
                 >
-                  <RefreshCw />
+                  <RefreshCw data-icon="inline-start" />
                   {t("retry")}
                 </Button>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => sourceInput.current?.click()}
-              >
-                {t("uploadVideo")}
-              </Button>
+              {sourceFallback && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => sourceInput.current?.click()}
+                  >
+                    {t("uploadVideo")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSourceTab("transcript");
+                      setMobileTab("source");
+                    }}
+                  >
+                    {t("pasteTranscript")}
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>
       )}
       <div className="min-h-0 flex-1">
         {mobile ? (
-          <Tabs defaultValue="preview" className="h-full gap-0">
+          <Tabs
+            value={mobileTab}
+            onValueChange={setMobileTab}
+            className="h-full gap-0"
+          >
             <TabsList className="rounded-none">
               <TabsTrigger value="source">{t("script")}</TabsTrigger>
               <TabsTrigger value="preview">{t("preview")}</TabsTrigger>

@@ -39,7 +39,7 @@ Route::prefix('api/v1')->group(function (): void {
         Route::put('/assistants/{id}', [WorkspaceController::class, 'saveAssistant']);
         Route::delete('/assistants/{id}', [WorkspaceController::class, 'deleteAssistant']);
         Route::get('/projects', [WorkspaceController::class, 'projects']);
-        Route::post('/projects', [WorkspaceController::class, 'createProject']);
+        Route::post('/projects', [WorkspaceController::class, 'createProject'])->middleware('throttle:generation');
         Route::post('/projects/{id}/prepare', [EditorController::class, 'prepare'])->middleware('throttle:generation');
         Route::get('/projects/{id}/assets', [EditorController::class, 'assets']);
         Route::post('/projects/{id}/assets', [EditorController::class, 'upload']);

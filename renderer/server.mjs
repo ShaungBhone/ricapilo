@@ -1,15 +1,20 @@
 import http from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { writeFile, mkdir, access } from "node:fs/promises";
+import { writeFile, mkdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { subtitles } from "./captions.mjs";
+import { projectFile } from "./private-media.mjs";
+import { renderRemotion } from "./remotion-render.mjs";
 import { renderPlan } from "./render.mjs";
 import { ratios, layouts, templates } from "../frontend/lib/editor-core.mjs";
 const execute = promisify(execFile);
 const root = process.env.MEDIA_ROOT || "/media";
 const token = process.env.RENDERER_TOKEN || "";
+const engine = process.env.RENDERER_ENGINE ?? "remotion";
+if (!["remotion", "ffmpeg"].includes(engine))
+  throw Error("Invalid renderer engine");
 let busy = false;
 function validAuth(header) {
   const incoming = (header || "").replace(/^Bearer /, "");
@@ -18,14 +23,6 @@ function validAuth(header) {
     Buffer.byteLength(incoming) === Buffer.byteLength(token) &&
     timingSafeEqual(Buffer.from(incoming), Buffer.from(token))
   );
-}
-function safeFile(relative, id) {
-  if (typeof relative !== "string" || !relative.startsWith(`projects/${id}/`))
-    throw Error("Invalid media path");
-  const resolved = path.resolve(root, relative);
-  if (!resolved.startsWith(path.resolve(root, "projects", id) + path.sep))
-    throw Error("Invalid path");
-  return resolved;
 }
 function run(args) {
   return new Promise((resolve, reject) => {
@@ -91,8 +88,7 @@ const server = http.createServer(async (req, res) => {
     ownsSlot = true;
     const dir = path.join(root, "projects", id);
     await mkdir(dir, { recursive: true });
-    const audio = safeFile(input.audioPath, id);
-    await access(audio);
+    const audio = await projectFile(root, input.audioPath, id);
     const settings = input.editorSettings ?? {
       version: 1,
       aspectRatio: input.format === "vertical" ? "9:16" : "16:9",
@@ -140,13 +136,18 @@ const server = http.createServer(async (req, res) => {
         { timeout: 10000 },
       );
       const info = JSON.parse(stdout),
-        video = info.streams?.find((s) => s.codec_type === "video" && !s.disposition?.attached_pic);
-      const rotation=video?.side_data_list?.find(s=>s.side_data_type==="Display Matrix")?.rotation ?? 0;
-      const rotated=Math.abs(rotation)%180===90;
+        video = info.streams?.find(
+          (s) => s.codec_type === "video" && !s.disposition?.attached_pic,
+        );
+      const rotation =
+        video?.side_data_list?.find(
+          (s) => s.side_data_type === "Display Matrix",
+        )?.rotation ?? 0;
+      const rotated = Math.abs(rotation) % 180 === 90;
       return {
         duration: Number(info.format?.duration),
-        width: (rotated?video?.height:video?.width) ?? 0,
-        height: (rotated?video?.width:video?.height) ?? 0,
+        width: (rotated ? video?.height : video?.width) ?? 0,
+        height: (rotated ? video?.width : video?.height) ?? 0,
         kind: video ? "video" : "audio",
         hasAudio: info.streams?.some((s) => s.codec_type === "audio"),
       };
@@ -156,33 +157,47 @@ const server = http.createServer(async (req, res) => {
       throw Error("Invalid narration");
     const assets = [];
     for (const asset of input.assets ?? []) {
-      const file = safeFile(asset.path, id);
+      const file = await projectFile(root, asset.path, id);
       assets.push({ ...asset, ...(await probe(file)), path: file });
     }
     if (input.mediaPath) {
-      const file = safeFile(input.mediaPath, id);
+      const file = await projectFile(root, input.mediaPath, id);
       assets.push({ id: "source", path: file, ...(await probe(file)) });
     }
     const [w, h] = ratios[settings.aspectRatio];
     const ass = path.join(dir, "captions.ass"),
-      out = path.join(dir, "recap.mp4");
-    await writeFile(
-      ass,
-      subtitles(
-        input.captions,
-        input.format === "vertical",
-        input.captionStyle,
-        { width: w, height: h, settings, duration: narrationInfo.duration },
-      ),
-    );
-    const plan = renderPlan(
-      { ...input, editorSettings: settings, audioPath: audio },
-      assets,
-      narrationInfo.duration,
-      ass,
-      out,
-    );
-    await run(plan.args);
+      out = path.join(dir, "recap.pending.mp4");
+    try {
+      if (engine === "ffmpeg") {
+        await writeFile(
+          ass,
+          subtitles(
+            input.captions,
+            input.format === "vertical",
+            input.captionStyle,
+            { width: w, height: h, settings, duration: narrationInfo.duration },
+          ),
+        );
+        const plan = renderPlan(
+          { ...input, editorSettings: settings, audioPath: audio },
+          assets,
+          narrationInfo.duration,
+          ass,
+          out,
+        );
+        await run(plan.args);
+      } else {
+        await renderRemotion(
+          { ...input, editorSettings: settings, audioPath: audio },
+          assets,
+          narrationInfo.duration,
+          out,
+        );
+      }
+      await rename(out, path.join(dir, "recap.mp4"));
+    } finally {
+      await rm(out, { force: true });
+    }
     send(200, { path: `projects/${id}/recap.mp4` });
   } catch (e) {
     send(500, { error: "Rendering failed" });

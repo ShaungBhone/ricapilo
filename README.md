@@ -2,7 +2,7 @@
   <img src="docs/assets/audio-lines.svg" alt="" width="24" height="24"> Ricapilo
 </h1>
 
-An open-source Burmese AI recap workspace: Laravel 13 API, Next.js 16 frontend, and an isolated FFmpeg video renderer. Uses Bun, Docker Compose, Laravel, and shadcn.
+An open-source Burmese AI recap workspace: Laravel 13 API, Next.js 16 frontend, and an isolated Remotion video renderer. Uses Bun, Docker Compose, Laravel, and shadcn.
 
 ## Start with Docker
 
@@ -22,23 +22,60 @@ Register an account in the app. Email verification is optional for now. To requi
 
 The local mail inbox is for development. Configure a real SMTP service for deployment.
 
-The default Docker frontend runs a production build. For live frontend updates while editing code, start it with the development override:
+### Apply code changes in Docker
+
+The default Docker frontend runs a production build containing the code from its last image build. `docker compose up` reuses existing images, so local code changes do not appear automatically. After editing the app, rebuild and recreate the services:
+
+```sh
+docker compose up --build -d
+```
+
+Refresh the browser after the build finishes. Backend changes also require rebuilding the API and worker images so queued jobs use the latest code.
+
+### Live frontend updates
+
+For live frontend updates while editing code, start it with the development override:
 
 ```sh
 docker compose -f compose.yaml -f compose.dev.yaml up --build -d frontend
 ```
 
-This mounts `frontend/` and runs Next.js development mode with file polling for Docker. Dependencies and build output stay in Docker volumes. To return to the production build, run `docker compose up --build -d frontend`.
+This mounts `frontend/` and runs Next.js development mode with file polling for Docker. Dependencies and build output stay in Docker volumes. This override applies to the frontend; backend changes still require rebuilding the API and worker images.
+
+To return to the production frontend:
+
+```sh
+docker compose up --build -d frontend
+```
 
 ## Configure discovery
 
-Discovery supports YouTube and Bilibili. Broad popularity requests use platform feeds; topic requests use searches. Results are limited to videos under four minutes, with dates and reported views. Bilibili public discovery uses `bilibili-cli==0.6.2`, installed in the API Docker image; local development requires Python 3.10 or later with `python3 -m pip install bilibili-cli==0.6.2` or a virtual environment selected with `MEDIA_PYTHON`. New Dailymotion projects are disabled; existing projects remain readable and processable. YouTube requires a YouTube Data API key managed by the administrator. Create an account, then promote it (verify it first only when `EMAIL_VERIFICATION_REQUIRED=true`):
+Discovery supports YouTube and Bilibili. Broad popularity requests use platform feeds; topic requests use searches. Results are limited to videos under four minutes, with dates and reported views. Bilibili public discovery uses `bilibili-cli==0.6.2`, installed in the API Docker image; local development requires Python 3.10 or later with `python3 -m pip install bilibili-cli==0.6.2` or a virtual environment selected with `MEDIA_PYTHON`. New Dailymotion projects are disabled; existing projects remain readable and processable.
+
+### Get a YouTube Data API key
+
+YouTube discovery requires one administrator-managed key. Ricapilo searches public videos, so an API key is sufficient; an OAuth client or consent screen is not needed.
+
+1. Sign in to the [Google Cloud Console](https://console.cloud.google.com/) with your Google account. Create a project (for example, `Ricapilo`) or select an existing one.
+2. Open **APIs & Services → Library**, search for **YouTube Data API v3**, and click **Enable** for that project.
+3. Open **APIs & Services → Credentials → Create credentials → API key**. Name the key, restrict its API access to **YouTube Data API v3**, and create it. If the restriction is shown on the key's edit page instead, select **API restrictions → Restrict key → YouTube Data API v3** and save.
+4. Copy the generated key to use in Ricapilo.
+
+For local Docker use, leave the key's **Application restrictions** set to **None** while keeping the API restriction above. Requests come from the Laravel backend, so website/referrer restrictions will not match. For a deployed server with a stable public outbound IP address, use an IP address application restriction for that address; do not use `localhost` or a private container IP.
+
+See Google's [YouTube API setup guide](https://developers.google.com/youtube/v3/getting-started) and [API key management guide](https://docs.cloud.google.com/docs/authentication/api-keys) for current console instructions.
+
+### Add the key to Ricapilo
+
+Register an account in the app, then promote it using the same email address (verify it first only when `EMAIL_VERIFICATION_REQUIRED=true`):
 
 ```sh
 docker compose exec api php artisan recap:admin you@example.com
 ```
 
-Open Administration and save the YouTube key. Administrators can also disable individual model IDs. User-supplied API keys are encrypted and never returned by the API. Each user's assistants, projects, files, and conversation history are private.
+Refresh the app or sign in again after promotion. Open **Administration**, paste the key into **Video discovery API key**, and click **Save**. The saved key takes effect immediately; no Docker rebuild or restart is needed. This enables YouTube discovery; retrieving a selected video's media still depends on source access.
+
+For local development without Docker, run `php artisan recap:admin you@example.com` from `api/` instead. Administrators can also disable individual model IDs. User-supplied API keys are encrypted and never returned by the API. Each user's assistants, projects, files, and conversation history are private.
 
 ## Source access and generation behavior
 
@@ -46,7 +83,7 @@ Search results are metadata, not media access guarantees. Selection records only
 
 The initial video assembly uses available source footage with Burmese narration and burned-in captions. A transcript-only or audio-only project produces a simple caption video. It does not include a timeline editor. Two basic caption styles are included: clean bottom and boxed minimal.
 
-Caption timing is currently estimated from each narration paragraph's measured duration. It is not word-level alignment. The Remotion caption preview is a visual timing preview; the rendered MP4 is the authoritative video with source footage and narration.
+Caption timing is currently estimated from each narration paragraph's measured duration. It is not word-level alignment. The editor preview and MP4 export share a Remotion composition for footage, captions, text overlays, and audio.
 
 Browser Talk uses microphone recording, silence detection, per-turn OpenRouter transcription/chat/speech calls, persisted transcript, and audio playback. It is a turn-based live conversation, not a provider-native full-duplex realtime socket. Chrome and Firefox support the implemented WebM/Ogg recording path; HTTPS or localhost is required. Headphones improve echo cancellation. Stop controls cancel local playback and suppress stale responses; an upstream request already submitted may still be billed.
 
@@ -55,11 +92,13 @@ Browser Talk uses microphone recording, silence detection, per-turn OpenRouter t
 - `frontend`: Next.js standalone application, exposes localhost:3000.
 - `api`: Laravel on Apache; reachable only inside the Compose network.
 - `worker`: long-running database queue worker with a 30-minute job timeout.
-- `renderer`: authenticated internal Node/FFmpeg renderer, shares only project media storage.
+- `renderer`: authenticated internal Node/Remotion renderer, shares only project media storage.
 - `database`: PostgreSQL, persistent volume.
 - `redis`: cache and overlap locks.
 - `mailpit`: development SMTP inbox.
 - `init`: applies migrations before API and worker start.
+
+The renderer defaults to Remotion. Set `RENDERER_ENGINE=ffmpeg` in the root `.env` and recreate the renderer to use the legacy FFmpeg composition. Remotion bundles the shared composition and Burmese fonts at image build time and installs Chrome Headless Shell. Private media is served only over render-scoped loopback URLs. A successful render atomically replaces `recap.mp4`; a failed render preserves the previous export.
 
 The renderer has one concurrent rendering slot. A second render is rejected with a retryable project failure rather than running unbounded CPU jobs. The worker runs with one process by default. Queue retry visibility is longer than the job timeout to prevent duplicate processing.
 
@@ -105,12 +144,19 @@ bun run typecheck
 bun run lint
 bun run build
 cd ../renderer
+bun install --frozen-lockfile
+bun run build
 node --test
 ```
 
 Lint uses Rector prepared code-quality sets, the Laravel Pint preset, and Prettier defaults with Tailwind sorting. `composer test` runs lint before the API suite. Install the frontend Bun dependencies before running Composer lint commands. The API has no Blade templates, so Blade-only lint is omitted. Next.js ESLint and TypeScript checks remain enabled.
 
-API tests mock provider responses and prevent stray requests, so they do not use paid API credits. The full live OpenRouter workflow requires your own key and credits. GitHub Actions runs API, frontend, and caption-format checks.
+API tests mock provider responses and prevent stray requests, so they do not use paid API credits. The full live OpenRouter workflow requires your own key and credits. GitHub Actions runs API, frontend, and renderer unit checks. For real MP4 export checks, build the renderer image and run:
+
+```sh
+docker compose build renderer
+docker compose run --rm --no-deps -e REMOTION_RENDER_TEST=1 renderer node --test remotion.integration.test.mjs
+```
 
 ## Deployment and backups
 

@@ -389,7 +389,7 @@
     "transcriptFallback": "Upload a source file or enter a transcript to continue. Transcript-only projects use a plain background.",
     "working": "Processing your project…",
     "status": "{status}",
-    "retry": "Retry preparation",
+    "retry": "Retry",
     "uploadVideo": "Upload source",
     "resizeTranscript": "Resize transcript and preview",
     "resizeTools": "Resize preview and tools",
@@ -402,6 +402,12 @@
     "fullscreen": "Fullscreen",
     "reload": "Reload project",
     "stay": "Keep editing",
-    "discardAndLeave": "Leave without saving"
+    "discardAndLeave": "Leave without saving",
+    "importingVideo": "Importing selected video…",
+    "generatingScript": "Generating recap script…",
+    "selectedVideoAutomatic": "The selected video will be imported automatically when generation starts.",
+    "transcriptOnlyPreview": "This project uses a transcript. You can review the script and generate narration with a plain background.",
+    "pasteTranscript": "Paste transcript",
+    "recapProgressDescription": "You can review the recap script when it is ready."
   }
 }

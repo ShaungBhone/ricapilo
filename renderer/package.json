@@ -1,1 +1,23 @@
-{"name":"recap-renderer","private":true,"type":"module","scripts":{"start":"node server.mjs","test":"node --test"},"engines":{"node":">=24"}}
+{
+  "name": "recap-renderer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "build": "node build.mjs",
+    "browser": "node browser.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@fontsource/noto-sans-myanmar": "5.3.0",
+    "@remotion/bundler": "4.0.519",
+    "@remotion/media": "4.0.519",
+    "@remotion/renderer": "4.0.519",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.519"
+  }
+}
