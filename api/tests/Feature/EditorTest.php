@@ -2,13 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Ai\OpenRouter;
 use App\Jobs\ProcessProject;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\EditorSettings;
 use App\Services\Media;
-use App\Services\OpenRouter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -44,6 +45,7 @@ class EditorTest extends TestCase
                 ->assertJsonPath('editor_settings.slots.0.y', 0.65);
             $this->assertEquals($settings, $project->fresh()->editor_settings);
         }
+
         foreach ([0.09, 8.01] as $scale) {
             $settings['slots'][0]['scale'] = $scale;
             $this->patchJson('/api/v1/projects/'.$project->id, ['editor_settings' => $settings])
@@ -206,7 +208,7 @@ class EditorTest extends TestCase
         $project->update(['editor_settings' => $settings]);
         config(['recap.renderer_token' => 'test-token', 'recap.renderer_url' => 'http://renderer.test']);
         Http::preventStrayRequests();
-        Http::fake(['http://renderer.test/render' => function ($request) use ($project, $settings) {
+        Http::fake(['http://renderer.test/render' => function (Request $request) use ($project, $settings) {
             $this->assertSame($settings, $request['editorSettings']);
             $this->assertSame($project->captions, $request['captions']);
             Storage::disk('local')->put('projects/'.$project->id.'/recap.mp4', 'rendered');

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Ai\Agents\RecapWriter;
+use App\Ai\OpenRouter;
 use App\Exceptions\GenerationException;
 use App\Models\Assistant;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\EditorSettings;
 use App\Services\Media;
-use App\Services\OpenRouter;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Ai\Agents\AssistantChat;
+use App\Ai\OpenRouter;
 use App\Exceptions\GenerationException;
 use App\Http\Requests\DiscoverRequest;
 use App\Http\Requests\GenerateProjectRequest;
@@ -22,7 +23,6 @@ use App\Models\Project;
 use App\Services\Discovery;
 use App\Services\EditorSettings;
 use App\Services\Media;
-use App\Services\OpenRouter;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Client\ConnectionException;

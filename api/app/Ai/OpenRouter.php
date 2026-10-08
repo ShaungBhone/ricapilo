@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\Ai;
 
 use App\Ai\Agents\DiscoveryIntent;
+use App\Ai\Gateways\OpenRouterGateway;
 use App\Exceptions\GenerationException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;

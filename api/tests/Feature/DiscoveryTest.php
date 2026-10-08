@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Ai\OpenRouter;
 use App\Exceptions\GenerationException;
 use App\Models\Assistant;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Discovery;
-use App\Services\OpenRouter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
@@ -114,6 +114,7 @@ class DiscoveryTest extends TestCase
         foreach ($response->json('videos') as $video) {
             $this->postJson('/api/v1/projects', ['title' => $video['title'], 'assistant_id' => $assistant->id, 'source' => $video['platform'], 'source_id' => $video['id'], 'format' => 'vertical', 'target_seconds' => 60])->assertCreated()->assertJsonPath('source', $video['platform'])->assertJsonPath('source_id', $video['id']);
         }
+
         Http::assertSentCount(2);
         Process::assertRan(fn ($process): bool => $process->command[2] === 'search');
     }

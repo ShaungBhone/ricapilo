@@ -4,7 +4,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EditorController;
 use App\Http\Controllers\WorkspaceController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/v1')->group(function (): void {
@@ -18,12 +20,12 @@ Route::prefix('api/v1')->group(function (): void {
     Route::middleware('auth')->group(function (): void {
         Route::get('/auth/me', fn (Request $r) => response()->json([...$r->user()->toArray(), 'email_verification_required' => (bool) config('recap.email_verification_required')]));
         Route::post('/auth/logout', [AuthController::class, 'logout']);
-        Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $r) {
+        Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $r): Redirector|RedirectResponse {
             $r->fulfill();
 
             return redirect(config('recap.frontend_url'));
         })->middleware('signed:relative')->name('verification.verify');
-        Route::post('/email/resend', function (Request $r) {
+        Route::post('/email/resend', function (Request $r): array {
             if (! $r->user()->hasVerifiedEmail()) {
                 $r->user()->sendEmailVerificationNotification();
             }

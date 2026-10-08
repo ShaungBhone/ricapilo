@@ -5,14 +5,15 @@ namespace Tests\Feature;
 use App\Ai\Agents\AssistantChat;
 use App\Ai\Agents\DiscoveryIntent;
 use App\Ai\Agents\RecapWriter;
+use App\Ai\Gateways\OpenRouterGateway;
+use App\Ai\OpenRouter;
 use App\Exceptions\GenerationException;
 use App\Jobs\ProcessProject;
 use App\Models\Assistant;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Media;
-use App\Services\OpenRouter;
-use App\Services\OpenRouterGateway;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Request;
@@ -86,10 +87,10 @@ class OpenRouterTest extends TestCase
         $usage = ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15, 'cost' => 0.01];
         Http::fake(['*/chat/completions' => Http::response(['choices' => [['message' => ['content' => 'မင်္ဂလာပါ']]], 'usage' => $usage])]);
         $optionsSeen = [];
-        $this->app->bind(OpenRouterGateway::class, function () use (&$optionsSeen) {
+        $this->app->bind(OpenRouterGateway::class, function () use (&$optionsSeen): OpenRouterGateway {
             return new class(app('events'), $optionsSeen) extends OpenRouterGateway
             {
-                public function __construct($events, private array &$optionsSeen)
+                public function __construct(Dispatcher $events, private array &$optionsSeen)
                 {
                     parent::__construct($events);
                 }
@@ -106,11 +107,12 @@ class OpenRouterTest extends TestCase
             $history = [new Message('user', 'First'), new Message('assistant', 'Previous answer')];
             $result = $this->configuredService($key)->prompt(new AssistantChat('Be concise.', $history), 'test/chat', 'Next');
             $this->assertSame(['text' => 'မင်္ဂလာပါ', 'usage' => $usage], $result);
-            Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer '.$key)
+            Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer '.$key)
                 && $request->hasHeader('HTTP-Referer', config('recap.frontend_url'))
                 && $request->hasHeader('X-OpenRouter-Title', config('ai.providers.openrouter.x_title'))
                 && $request['model'] === 'test/chat' && $request['messages'] === $messages && $request['max_tokens'] === 4000);
         }
+
         $this->assertCount(2, $optionsSeen);
         foreach ($optionsSeen as $options) {
             $this->assertSame(90, $options['timeout']);
@@ -128,7 +130,7 @@ class OpenRouterTest extends TestCase
             $this->assertSame($data, $this->configuredService($key)->transcribe('test/stt', Transcription::fromBase64(base64_encode('source-audio'), match ($format) {
                 'mp3' => 'audio/mpeg', 'm4a' => 'audio/mp4', default => 'audio/'.$format
             }), 'my'));
-            Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer '.$key)
+            Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer '.$key)
                 && $request['model'] === 'test/stt' && $request['language'] === 'my'
                 && $request['input_audio'] === ['data' => base64_encode('source-audio'), 'format' => $format]
                 && $request['response_format'] === 'verbose_json' && $request['timestamp_granularities'] === ['segment']
@@ -141,7 +143,7 @@ class OpenRouterTest extends TestCase
         Http::fake(['*/audio/speech' => Http::response('ID3mp3-bytes', 200, ['Content-Type' => 'audio/mpeg'])]);
         foreach (['first', 'second'] as $key) {
             $this->assertSame('ID3mp3-bytes', $this->configuredService($key)->speech('test/tts', 'default-female', 'မင်္ဂလာပါ'));
-            Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer '.$key)
+            Http::assertSent(fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer '.$key)
                 && $request['model'] === 'test/tts' && $request['voice'] === 'default-female'
                 && $request['response_format'] === 'mp3' && $request->hasHeader('HTTP-Referer', config('recap.frontend_url')));
         }
@@ -179,12 +181,12 @@ class OpenRouterTest extends TestCase
         $first->assertOk()->assertJsonPath('audio', base64_encode('ID3spoken'))->assertJsonPath('text', 'First answer');
         $id = $first->json('conversation.id');
         $this->postJson('/api/v1/talk', ['assistant_id' => $assistant->id, 'conversation_id' => $id, 'text' => 'Follow up'])->assertOk()->assertJsonCount(4, 'conversation.messages');
-        AssistantChat::assertPrompted(fn (AgentPrompt $prompt) => $prompt->prompt === 'Follow up'
+        AssistantChat::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->prompt === 'Follow up'
             && count($prompt->agent->messages()) === 2);
         $this->post('/api/v1/transcribe', ['assistant_id' => $assistant->id, 'audio' => $this->uploadedAudio()])->assertOk()->assertJsonPath('text', 'Uploaded transcript');
         $this->postJson('/api/v1/assistants/'.$assistant->id.'/preview')->assertOk()->assertJsonPath('audio', base64_encode('ID3preview'));
-        Transcription::assertGenerated(fn (TranscriptionPrompt $prompt) => $prompt->language === 'my' && $prompt->model === 'test/stt');
-        Audio::assertGenerated(fn (AudioPrompt $prompt) => $prompt->voice === 'test-voice' && $prompt->model === 'test/tts');
+        Transcription::assertGenerated(fn (TranscriptionPrompt $prompt): bool => $prompt->language === 'my' && $prompt->model === 'test/stt');
+        Audio::assertGenerated(fn (AudioPrompt $prompt): bool => $prompt->voice === 'test-voice' && $prompt->model === 'test/tts');
     }
 
     public function test_gemini_pcm_is_converted_to_mp3_and_temporary_files_are_removed(): void
@@ -200,7 +202,7 @@ class OpenRouterTest extends TestCase
             return Process::result();
         });
         $this->assertSame('ID3converted', $this->configuredService()->speech('google/gemini-tts', 'Kore', 'Hello'));
-        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'audio/speech') && $request['response_format'] === 'pcm' && $request['voice'] === 'Kore');
+        Http::assertSent(fn (Request $request): bool => str_contains($request->url(), 'audio/speech') && $request['response_format'] === 'pcm' && $request['voice'] === 'Kore');
         foreach ($paths as $path) {
             $this->assertFileDoesNotExist($path);
         }
@@ -218,9 +220,10 @@ class OpenRouterTest extends TestCase
         try {
             $this->configuredService()->speech('google/gemini-tts', 'Kore', 'Hello');
             $this->fail('Conversion must fail.');
-        } catch (GenerationException $exception) {
-            $this->assertSame('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese', $exception->getMessage());
+        } catch (GenerationException $generationException) {
+            $this->assertSame('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese', $generationException->getMessage());
         }
+
         foreach ($paths as $path) {
             $this->assertFileDoesNotExist($path);
         }
@@ -245,7 +248,7 @@ class OpenRouterTest extends TestCase
         $this->assertSame('audio_ready', $project->status);
         $this->assertSame('ID3narration', Storage::disk('local')->get($project->audio_path));
         $this->assertSame(2000, $project->captions[0]['endMs']);
-        Audio::assertGenerated(fn (AudioPrompt $prompt) => $prompt->model === 'test/tts' && $prompt->voice === 'test-voice');
+        Audio::assertGenerated(fn (AudioPrompt $prompt): bool => $prompt->model === 'test/tts' && $prompt->voice === 'test-voice');
     }
 
     public function test_script_job_transcribes_source_chunks_before_generating_recap(): void
@@ -264,8 +267,8 @@ class OpenRouterTest extends TestCase
         (new ProcessProject($project->id, 'script'))->handle(app(OpenRouter::class), $media);
         $this->assertSame('A source transcript', $project->fresh()->transcript);
         $this->assertSame('မြန်မာ အနှစ်ချုပ်', $project->fresh()->script);
-        Transcription::assertGenerated(fn (TranscriptionPrompt $prompt) => $prompt->language === null && $prompt->model === 'test/stt');
-        RecapWriter::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, 'A source transcript'));
+        Transcription::assertGenerated(fn (TranscriptionPrompt $prompt): bool => $prompt->language === null && $prompt->model === 'test/stt');
+        RecapWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'A source transcript'));
     }
 
     public function test_invalid_base64_audio_from_sdk_is_rejected(): void
@@ -292,18 +295,19 @@ class OpenRouterTest extends TestCase
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
         $this->actingAs($user)->postJson('/api/v1/discover', ['assistant_id' => $assistant->id, 'prompt' => 'အာကာသ', 'platform' => 'bilibili'])->assertOk()->assertJsonPath('query', 'space documentaries');
         DiscoveryIntent::assertPrompted('အာကာသ');
-        Process::assertRan(fn ($process) => $process->command[2] === 'search' && $process->command[3] === '太空纪录片');
+        Process::assertRan(fn ($process): bool => $process->command[2] === 'search' && $process->command[3] === '太空纪录片');
     }
 
     public function test_missing_credentials_and_disabled_models_do_not_generate(): void
     {
-        $user = User::factory()->create();
+        User::factory()->create();
         try {
             app(OpenRouter::class)->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello');
             $this->fail('Missing key must fail.');
-        } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('key', $exception->errors());
+        } catch (ValidationException $validationException) {
+            $this->assertArrayHasKey('key', $validationException->errors());
         }
+
         DB::table('site_settings')->insert(['key' => 'disabled_models', 'value' => json_encode(['test/chat'])]);
         $this->expectException(ValidationException::class);
         app(OpenRouter::class)->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello');
@@ -313,7 +317,7 @@ class OpenRouterTest extends TestCase
     public function test_provider_and_malformed_responses_use_existing_errors(string $operation, int $status, mixed $body, string $message): void
     {
         Http::fake(['*/chat/completions' => Http::response($body, $status), '*/audio/*' => Http::response($body, $status)]);
-        $user = $this->userWithKey();
+        $this->userWithKey();
         $this->expectException(GenerationException::class);
         $this->expectExceptionMessage($message);
         $service = app(OpenRouter::class);

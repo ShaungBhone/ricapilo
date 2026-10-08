@@ -8,7 +8,15 @@
 **/*.sqlite-*
 **/*.tsbuildinfo
 .DS_Store
-.agents/skills/
+
+# AI assistant files (Claude Code, OpenCode, Laravel Boost)
+**/.agents/
+**/.claude/
+**/.mcp.json
+**/opencode.json
+**/AGENTS.md
+**/CLAUDE.md
+**/boost.json
 
 !**/.env.example
 

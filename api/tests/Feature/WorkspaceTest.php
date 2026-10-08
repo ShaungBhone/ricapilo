@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Ai\Agents\AssistantChat;
 use App\Ai\Agents\RecapWriter;
+use App\Ai\OpenRouter;
 use App\Exceptions\GenerationException;
 use App\Jobs\ProcessProject;
 use App\Models\Assistant;
@@ -11,7 +12,6 @@ use App\Models\Conversation;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Media;
-use App\Services\OpenRouter;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -204,7 +204,7 @@ class WorkspaceTest extends TestCase
         });
         (new ProcessProject($id, 'script'))->handle(app(OpenRouter::class), app(Media::class));
         $this->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('status', 'script_ready')->assertJsonPath('transcript', 'A faithful source transcript.')->assertJsonPath('script', 'မြန်မာ အနှစ်ချုပ်')->assertJsonPath('has_media', true)->assertJsonPath('editor_settings.slots.0.assetId', 'source')->assertJsonPath('has_audio', false)->assertJsonPath('has_video', false);
-        RecapWriter::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, 'A faithful source transcript.'));
+        RecapWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'A faithful source transcript.'));
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/audio/speech'));
         Queue::assertPushed(ProcessProject::class, 1);
     }
@@ -221,8 +221,8 @@ class WorkspaceTest extends TestCase
         try {
             $job->handle(app(OpenRouter::class), app(Media::class));
             $this->fail('Download failure must stop script generation.');
-        } catch (GenerationException $error) {
-            $job->failed($error);
+        } catch (GenerationException $generationException) {
+            $job->failed($generationException);
         }
 
         $this->actingAs($user)->withHeader('Accept-Language', 'my')->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('status', 'failed')->assertJsonPath('source_unavailable', true);
@@ -285,7 +285,7 @@ class WorkspaceTest extends TestCase
         (new ProcessProject($p->id, 'script'))->handle(app(OpenRouter::class), app(Media::class));
         $this->assertSame('မြန်မာ အနှစ်ချုပ်', $p->fresh()->script);
         $this->assertSame('script_ready', $p->fresh()->status);
-        RecapWriter::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, $p->transcript));
+        RecapWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, $p->transcript));
     }
 
     public function test_text_talk_persists_history_without_exposing_credentials(): void
@@ -340,7 +340,7 @@ class WorkspaceTest extends TestCase
         $u = User::factory()->create();
         $this->postJson('/api/v1/auth/forgot', ['email' => $u->email])->assertOk();
         $token = null;
-        Notification::assertSentTo($u, ResetPassword::class, function ($n) use (&$token) {
+        Notification::assertSentTo($u, ResetPassword::class, function ($n) use (&$token): true {
             $token = $n->token;
 
             return true;
