@@ -39,7 +39,7 @@ class EditorSettings
             'settings.slots.*.mode' => 'required|in:fit,fill',
             'settings.slots.*.x' => 'required|numeric|between:0,1',
             'settings.slots.*.y' => 'required|numeric|between:0,1',
-            'settings.slots.*.scale' => 'required|numeric|between:0.25,4',
+            'settings.slots.*.scale' => 'required|numeric|between:0.1,8',
             'settings.slots.*.visible' => 'required|boolean',
             'settings.textOverlays' => 'present|array|list|max:30',
             'settings.textOverlays.*' => 'array:id,text,x,y,fontSize,color,bold,background,align,visible',

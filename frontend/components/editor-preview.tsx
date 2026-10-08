@@ -7,6 +7,8 @@ import { Player, type PlayerRef } from "@remotion/player";
 import { VideoComposition } from "./video-composition";
 import { API } from "@/lib/api";
 import type { EditorAsset, EditorDraft } from "@/lib/editor";
+import { VideoPlacementOverlay } from "./video-placement-overlay";
+import { slotTransform, transformedSlot } from "@/lib/editor-core.mjs";
 import { ratios } from "@/lib/editor-core.mjs";
 export type DragChange = (
   kind: "slot" | "text",
@@ -14,6 +16,7 @@ export type DragChange = (
   x: number,
   y: number,
   phase: "start" | "move" | "end",
+  slot?: import("@/lib/editor").Slot,
 ) => void;
 function Draggable({
   children,
@@ -125,21 +128,16 @@ function Composition({
       }
       renderSlotControl={
         tool === "Media" && !disabled
-          ? (i, p, slot) => (
-              <Draggable
+          ? (i, _p, slot, region, asset) => (
+              <VideoPlacementOverlay
                 label={`${labels.moveVideo} ${i + 1}`}
-                anchor={slot}
-                style={{
-                  position: "absolute",
-                  left: p.x,
-                  top: p.y,
-                  width: p.width,
-                  height: p.height,
-                  maxWidth: "none",
-                  border: "2px solid #bef264",
-                  background: "transparent",
+                frame={region}
+                source={asset}
+                transform={slotTransform(region, asset, slot)}
+                onChange={(transform, phase) => {
+                  const next = transformedSlot(region, asset, slot, transform);
+                  onDrag("slot", i, next.x, next.y, phase, next);
                 }}
-                onDrag={(x, y, phase) => onDrag("slot", i, x, y, phase)}
               />
             )
           : undefined

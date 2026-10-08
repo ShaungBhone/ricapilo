@@ -9,7 +9,7 @@ WORKDIR /app/renderer
 COPY renderer/package.json renderer/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY renderer/ ./
-COPY frontend/lib/editor-core.mjs frontend/lib/editor-core.d.mts /app/frontend/lib/
+COPY frontend/lib/editor-core.mjs frontend/lib/editor-core.d.mts frontend/lib/crop.mjs frontend/lib/crop.d.mts /app/frontend/lib/
 COPY frontend/components/video-composition.tsx /app/frontend/components/video-composition.tsx
 RUN node build.mjs && node browser.mjs && chown -R 33:33 /app/renderer
 USER 33:33

@@ -35,3 +35,21 @@ export function captionDownload(
   captions: { text: string; startMs: number; endMs: number }[],
   format: string,
 ): string;
+
+export function slotTransform(
+  region: Region,
+  asset: { width: number; height: number },
+  slot: { mode: string; scale: number; x: number; y: number },
+): import("./crop.mjs").VideoTransform;
+export function transformedSlot<
+  T extends { mode: "fit" | "fill"; scale: number; x: number; y: number },
+>(
+  region: Region,
+  asset: { width: number; height: number },
+  slot: T,
+  transform: import("./crop.mjs").VideoTransform,
+): T;
+export function backdropPlacement(
+  region: Region,
+  asset: { width: number; height: number },
+): { width: number; height: number; x: number; y: number; blur: number };

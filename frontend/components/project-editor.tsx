@@ -26,7 +26,7 @@ import {
   EyeOff,
   RefreshCw,
   LoaderCircle,
-  Search,
+  Check,
 } from "lucide-react";
 import type { PlayerRef } from "@remotion/player";
 import { api, API, json, type Project } from "@/lib/api";
@@ -36,6 +36,7 @@ import {
   projectWorkflow,
   changes,
   editHistory,
+  gestureHistory,
   moveHistory,
   reconcilePolling,
   type EditorAsset,
@@ -50,14 +51,30 @@ import {
   templates,
   regions,
   captionDownload,
+  slotTransform,
+  transformedSlot,
 } from "@/lib/editor-core.mjs";
-import { cn } from "@/lib/utils";
+import {
+  getLayoutMode,
+  fillTransform,
+  fitTransform,
+  clampTransform,
+} from "@/lib/crop.mjs";
+import { CaptionTranscript } from "@/components/caption-transcript";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { Toggle } from "@base-ui/react/toggle";
 import { EditorPreview, type DragChange } from "@/components/editor-preview";
 import { Feedback, Blank } from "@/components/feedback";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+  FieldLegend,
+} from "@/components/ui/field";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -135,9 +152,10 @@ export function ProjectEditor({ id }: { id: string }) {
   const [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [tool, setTool] = useState("Captions"),
-    [search, setSearch] = useState(""),
     [frame, setFrame] = useState(0),
     [duration, setDuration] = useState(0);
+  const [selectedSlot, setSelectedSlot] = useState(0);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [sourceTab, setSourceTab] = useState("script"),
     [mobileTab, setMobileTab] = useState("source");
   const [mobile, setMobile] = useState(false);
@@ -344,9 +362,11 @@ export function ProjectEditor({ id }: { id: string }) {
     window.addEventListener("keydown", keyboard);
     return () => window.removeEventListener("keydown", keyboard);
   }, [processing, save]);
-  const drag: DragChange = (kind, item, x, y, phase) => {
+  const drag: DragChange = (kind, item, x, y, phase, slot) => {
     if (processing) return;
     if (phase === "start") {
+      if (kind === "text") setSelectedTextId(String(item));
+      else setSelectedSlot(Number(item));
       dragStart.current = stateRef.current.history?.present ?? null;
       return;
     }
@@ -362,7 +382,7 @@ export function ProjectEditor({ id }: { id: string }) {
             ? {
                 ...current,
                 slots: current.slots.map((s, i) =>
-                  i === item ? { ...s, x, y } : s,
+                  i === item ? { ...s, ...slot, x, y } : s,
                 ),
               }
             : {
@@ -372,12 +392,7 @@ export function ProjectEditor({ id }: { id: string }) {
                 ),
               },
       };
-      if (phase === "end") {
-        return start
-          ? editHistory({ ...h, present: start }, next)
-          : editHistory(h, next);
-      }
-      return { ...h, present: next };
+      return gestureHistory(h, start, next, phase);
     });
   };
   const upload = (file: File | null, source = false) => {
@@ -417,6 +432,9 @@ export function ProjectEditor({ id }: { id: string }) {
       </div>
     );
   const s = draft.editor_settings;
+  const activeTextId =
+    s.textOverlays.find((item) => item.id === selectedTextId)?.id ??
+    s.textOverlays[0]?.id;
   const workflow = projectWorkflow(project);
   const sourceFallback = workflow.sourceFallback;
   const manualSource = project.source === "upload" && !project.has_media;
@@ -444,22 +462,29 @@ export function ProjectEditor({ id }: { id: string }) {
       ),
     }));
   const sourcePanel = (
-    <section className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4">
-      <Tabs value={sourceTab} onValueChange={setSourceTab}>
-        <TabsList>
+    <section className="flex h-full min-h-0 flex-col overflow-hidden">
+      <Tabs
+        value={sourceTab}
+        onValueChange={setSourceTab}
+        className="min-h-0 flex-1 gap-0 overflow-hidden"
+      >
+        <TabsList className="m-3">
           <TabsTrigger value="transcript">{t("transcript")}</TabsTrigger>
           <TabsTrigger value="script">{t("script")}</TabsTrigger>
           <TabsTrigger value="captions">{t("captions")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="transcript">
-          <FieldGroup>
-            <Field>
+        <TabsContent
+          value="transcript"
+          className="flex min-h-0 flex-col overflow-y-auto px-4 pb-4"
+        >
+          <FieldGroup className="min-h-0 flex-1">
+            <Field className="min-h-40 flex-1">
               <FieldLabel htmlFor="editor-transcript">
                 {pt("sourceTranscript")}
               </FieldLabel>
               <Textarea
                 id="editor-transcript"
-                rows={15}
+                className="field-sizing-fixed min-h-40 flex-1 resize-none"
                 value={draft.transcript}
                 disabled={processing}
                 onChange={(e) =>
@@ -483,15 +508,18 @@ export function ProjectEditor({ id }: { id: string }) {
             )}
           </FieldGroup>
         </TabsContent>
-        <TabsContent value="script">
-          <FieldGroup>
-            <Field>
+        <TabsContent
+          value="script"
+          className="flex min-h-0 flex-col overflow-y-auto px-4 pb-4"
+        >
+          <FieldGroup className="min-h-0 flex-1">
+            <Field className="min-h-40 flex-1">
               <FieldLabel htmlFor="editor-script">
                 {pt("burmeseScript")}
               </FieldLabel>
               <Textarea
                 id="editor-script"
-                rows={17}
+                className="field-sizing-fixed min-h-40 flex-1 resize-none"
                 value={draft.script}
                 disabled={processing}
                 onChange={(e) =>
@@ -504,104 +532,21 @@ export function ProjectEditor({ id }: { id: string }) {
             </p>
           </FieldGroup>
         </TabsContent>
-        <TabsContent value="captions">
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="caption-search">
-                <Search />
-                {t("searchCaptions")}
-              </FieldLabel>
-              <Input
-                id="caption-search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </Field>
-            {draft.captions.length === 0 ? (
-              <Blank
-                title={t("noCaptions")}
-                description={t("generateNarrationFirst")}
-              />
-            ) : (
-              draft.captions.map((c, i) =>
-                c.text
-                  .toLocaleLowerCase()
-                  .includes(search.toLocaleLowerCase()) ? (
-                  <Field
-                    key={i}
-                    data-invalid={c.endMs <= c.startMs}
-                    className={cn(
-                      "rounded-lg border p-3",
-                      (frame / 30) * 1000 >= c.startMs &&
-                        (frame / 30) * 1000 < c.endMs &&
-                        "border-primary",
-                    )}
-                  >
-                    <FieldLabel htmlFor={`caption-${i}`}>
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        onClick={() => seek(c.startMs)}
-                      >
-                        {(c.startMs / 1000).toFixed(2)}s
-                      </Button>
-                    </FieldLabel>
-                    <Textarea
-                      id={`caption-${i}`}
-                      value={c.text}
-                      disabled={processing}
-                      onChange={(e) =>
-                        edit((d) => ({
-                          ...d,
-                          captions: d.captions.map((item, index) =>
-                            index === i
-                              ? { ...item, text: e.target.value }
-                              : item,
-                          ),
-                        }))
-                      }
-                    />
-                    <div className="flex gap-2">
-                      {(["startMs", "endMs"] as const).map((key) => (
-                        <Field key={key}>
-                          <FieldLabel htmlFor={`caption-${i}-${key}`}>
-                            {t(key)}
-                          </FieldLabel>
-                          <Input
-                            id={`caption-${i}-${key}`}
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={c[key] / 1000}
-                            disabled={processing}
-                            aria-invalid={c.endMs <= c.startMs}
-                            onChange={(e) =>
-                              edit((d) => ({
-                                ...d,
-                                captions: d.captions.map((item, index) =>
-                                  index === i
-                                    ? {
-                                        ...item,
-                                        [key]: Math.round(
-                                          Number(e.target.value) * 1000,
-                                        ),
-                                      }
-                                    : item,
-                                ),
-                              }))
-                            }
-                          />
-                        </Field>
-                      ))}
-                    </div>
-                  </Field>
-                ) : null,
-              )
-            )}
-          </FieldGroup>
+        <TabsContent
+          value="captions"
+          className="flex min-h-0 flex-col overflow-hidden"
+        >
+          <CaptionTranscript
+            captions={draft.captions}
+            currentTimeMs={(frame / 30) * 1000}
+            disabled={processing}
+            onChange={(captions) => edit((d) => ({ ...d, captions }))}
+            onSeek={seek}
+            onDownload={downloadCaptions}
+          />
         </TabsContent>
       </Tabs>
-      <div className="mt-auto flex shrink-0 flex-col gap-3">
+      <div className="flex shrink-0 flex-col gap-3 border-t bg-background p-4">
         <Button disabled={processing} onClick={() => void generate("script")}>
           {pt("1GenerateBurmeseRecap")}
         </Button>
@@ -642,23 +587,35 @@ export function ProjectEditor({ id }: { id: string }) {
         <TabsContent value="Captions" className="overflow-y-auto p-4">
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="caption-preset">
-                {t("captionStyle")}
-              </FieldLabel>
-              <NativeSelect
-                id="caption-preset"
-                value={draft.caption_style}
-                disabled={processing}
-                onChange={(e) =>
-                  edit((d) => ({ ...d, caption_style: e.target.value }))
-                }
+              <FieldLabel id="caption-presets">{t("captionStyle")}</FieldLabel>
+              <ToggleGroup
+                aria-labelledby="caption-presets"
+                value={[draft.caption_style]}
+                onValueChange={(values) => {
+                  if (values[0])
+                    edit((d) => ({ ...d, caption_style: values[0] }));
+                }}
+                className="flex flex-col gap-2"
               >
-                {templates.map((p) => (
-                  <NativeSelectOption key={p} value={p}>
-                    {t(p)}
-                  </NativeSelectOption>
+                {templates.map((preset) => (
+                  <Toggle
+                    key={preset}
+                    value={preset}
+                    disabled={processing}
+                    render={
+                      <Button
+                        variant="outline"
+                        className="justify-between data-pressed:bg-primary data-pressed:text-primary-foreground"
+                      />
+                    }
+                  >
+                    {t(preset)}
+                    {draft.caption_style === preset && (
+                      <Check data-icon="inline-end" />
+                    )}
+                  </Toggle>
                 ))}
-              </NativeSelect>
+              </ToggleGroup>
             </Field>
             <Button
               variant="outline"
@@ -673,22 +630,6 @@ export function ProjectEditor({ id }: { id: string }) {
             <p className="text-xs leading-relaxed text-muted-foreground">
               {t("segmentTiming")}
             </p>
-            <Field>
-              <FieldLabel>{t("downloadCaptions")}</FieldLabel>
-              <div className="flex flex-wrap gap-2">
-                {["txt", "srt", "vtt"].map((format) => (
-                  <Button
-                    key={format}
-                    size="sm"
-                    variant="outline"
-                    disabled={!draft.captions.length}
-                    onClick={() => downloadCaptions(format)}
-                  >
-                    {format.toUpperCase()}
-                  </Button>
-                ))}
-              </div>
-            </Field>
           </FieldGroup>
         </TabsContent>
         <TabsContent value="Media" className="overflow-y-auto p-4">
@@ -736,7 +677,6 @@ export function ProjectEditor({ id }: { id: string }) {
                   </div>
                   {a.id !== "source" && (
                     <Button
-                      size="icon-sm"
                       variant="ghost"
                       aria-label={t("removeMedia")}
                       disabled={processing}
@@ -756,104 +696,149 @@ export function ProjectEditor({ id }: { id: string }) {
                   )}
                 </div>
               ))}
-            {s.slots.map((slot, i) => (
-              <FieldGroup key={i} className="rounded-lg border p-3">
-                <Field>
-                  <FieldLabel htmlFor={`slot-${i}`}>
+            <Field>
+              <FieldLabel htmlFor="selected-slot">
+                {t("selectedSlot")}
+              </FieldLabel>
+              <NativeSelect
+                id="selected-slot"
+                value={Math.min(selectedSlot, s.slots.length - 1)}
+                onChange={(e) => setSelectedSlot(Number(e.target.value))}
+              >
+                {s.slots.map((_, i) => (
+                  <NativeSelectOption key={i} value={i}>
                     {t("slot", { count: i + 1 })}
-                  </FieldLabel>
-                  <NativeSelect
-                    id={`slot-${i}`}
-                    value={slot.assetId ?? ""}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </Field>
+            {s.slots.map((slot, i) => {
+              if (i !== Math.min(selectedSlot, s.slots.length - 1)) return null;
+              const [width, height] = ratios[s.aspectRatio];
+              const region = regions(s.layout, width, height)[i];
+              const asset = assets.find(
+                (a) => a.id === slot.assetId && a.kind === "video",
+              );
+              const transform = asset
+                ? slotTransform(region, asset, slot)
+                : null;
+              const mode =
+                asset && transform
+                  ? getLayoutMode({ frame: region, source: asset, transform })
+                  : slot.mode;
+              return (
+                <FieldGroup key={i} className="rounded-lg border p-3">
+                  <Field>
+                    <FieldLabel htmlFor={`slot-${i}`}>
+                      {t("slot", { count: i + 1 })}
+                    </FieldLabel>
+                    <NativeSelect
+                      id={`slot-${i}`}
+                      value={slot.assetId ?? ""}
+                      disabled={processing}
+                      onChange={(e) =>
+                        settings((s) => ({
+                          ...s,
+                          slots: s.slots.map((item, index) =>
+                            index === i
+                              ? emptySlot(e.target.value || null, item.mode)
+                              : item,
+                          ),
+                        }))
+                      }
+                    >
+                      <NativeSelectOption value="">
+                        {t("emptySlot")}
+                      </NativeSelectOption>
+                      {assets
+                        .filter((a) => a.kind === "video")
+                        .map((a) => (
+                          <NativeSelectOption key={a.id} value={a.id}>
+                            {a.name}
+                          </NativeSelectOption>
+                        ))}
+                    </NativeSelect>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`fit-${i}`}>{t("fitMode")}</FieldLabel>
+                    <NativeSelect
+                      id={`fit-${i}`}
+                      value={mode}
+                      disabled={processing || !asset}
+                      onChange={(e) => {
+                        if (!asset || e.target.value === "custom") return;
+                        const transform =
+                          e.target.value === "fill"
+                            ? fillTransform(region, asset)
+                            : fitTransform;
+                        settings((s) => ({
+                          ...s,
+                          slots: s.slots.map((item, index) =>
+                            index === i
+                              ? transformedSlot(region, asset, item, transform)
+                              : item,
+                          ),
+                        }));
+                      }}
+                    >
+                      <NativeSelectOption value="custom" disabled>
+                        {t("custom")}
+                      </NativeSelectOption>
+                      <NativeSelectOption value="fit">
+                        {t("fit")}
+                      </NativeSelectOption>
+                      <NativeSelectOption value="fill">
+                        {t("fill")}
+                      </NativeSelectOption>
+                    </NativeSelect>
+                  </Field>
+                  <Range
+                    label={t("zoom")}
+                    min={0.1}
+                    max={Math.max(8, transform?.scale ?? 1)}
+                    value={transform?.scale ?? 1}
+                    disabled={processing || !asset}
+                    onChange={(scale) =>
+                      settings((s) => ({
+                        ...s,
+                        slots: s.slots.map((item, index) =>
+                          index === i && asset && transform
+                            ? transformedSlot(
+                                region,
+                                asset,
+                                item,
+                                clampTransform({
+                                  frame: region,
+                                  source: asset,
+                                  mode,
+                                  transform: { ...transform, scale },
+                                }),
+                              )
+                            : item,
+                        ),
+                      }))
+                    }
+                  />
+                  <Button
+                    variant="ghost"
                     disabled={processing}
-                    onChange={(e) =>
+                    onClick={() =>
                       settings((s) => ({
                         ...s,
                         slots: s.slots.map((item, index) =>
                           index === i
-                            ? emptySlot(e.target.value || null, item.mode)
+                            ? { ...item, visible: !item.visible }
                             : item,
                         ),
                       }))
                     }
                   >
-                    <NativeSelectOption value="">
-                      {t("emptySlot")}
-                    </NativeSelectOption>
-                    {assets
-                      .filter((a) => a.kind === "video")
-                      .map((a) => (
-                        <NativeSelectOption key={a.id} value={a.id}>
-                          {a.name}
-                        </NativeSelectOption>
-                      ))}
-                  </NativeSelect>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor={`fit-${i}`}>{t("fitMode")}</FieldLabel>
-                  <NativeSelect
-                    id={`fit-${i}`}
-                    value={slot.mode}
-                    disabled={processing}
-                    onChange={(e) =>
-                      settings((s) => ({
-                        ...s,
-                        slots: s.slots.map((item, index) =>
-                          index === i
-                            ? {
-                                ...item,
-                                mode: e.target.value as "fit" | "fill",
-                                scale: 1,
-                                x: 0.5,
-                                y: 0.5,
-                              }
-                            : item,
-                        ),
-                      }))
-                    }
-                  >
-                    <NativeSelectOption value="fit">
-                      {t("fit")}
-                    </NativeSelectOption>
-                    <NativeSelectOption value="fill">
-                      {t("fill")}
-                    </NativeSelectOption>
-                  </NativeSelect>
-                </Field>
-                <Range
-                  label={t("zoom")}
-                  min={0.25}
-                  max={4}
-                  value={slot.scale}
-                  disabled={processing}
-                  onChange={(scale) =>
-                    settings((s) => ({
-                      ...s,
-                      slots: s.slots.map((item, index) =>
-                        index === i ? { ...item, scale } : item,
-                      ),
-                    }))
-                  }
-                />
-                <Button
-                  variant="ghost"
-                  disabled={processing}
-                  onClick={() =>
-                    settings((s) => ({
-                      ...s,
-                      slots: s.slots.map((item, index) =>
-                        index === i
-                          ? { ...item, visible: !item.visible }
-                          : item,
-                      ),
-                    }))
-                  }
-                >
-                  {slot.visible ? <Eye /> : <EyeOff />}
-                  {t("toggleSlot")}
-                </Button>
-              </FieldGroup>
-            ))}
+                    {slot.visible ? <Eye /> : <EyeOff />}
+                    {t("toggleSlot")}
+                  </Button>
+                </FieldGroup>
+              );
+            })}
             <p className="text-xs text-muted-foreground">{t("dragMedia")}</p>
           </FieldGroup>
         </TabsContent>
@@ -862,13 +847,15 @@ export function ProjectEditor({ id }: { id: string }) {
             <Button
               disabled={processing || s.textOverlays.length >= 30}
               variant="outline"
-              onClick={() =>
+              onClick={() => {
+                const overlayId = crypto.randomUUID();
+                setSelectedTextId(overlayId);
                 settings((s) => ({
                   ...s,
                   textOverlays: [
                     ...s.textOverlays,
                     {
-                      id: crypto.randomUUID(),
+                      id: overlayId,
                       text: t("newText"),
                       x: 0.5,
                       y: 0.22,
@@ -880,219 +867,277 @@ export function ProjectEditor({ id }: { id: string }) {
                       visible: true,
                     },
                   ],
-                }))
-              }
+                }));
+              }}
             >
               <Plus />
               {t("addText")}
             </Button>
-            {s.textOverlays.map((o) => (
-              <FieldGroup key={o.id} className="rounded-lg border p-3">
-                <Field>
-                  <FieldLabel htmlFor={`text-${o.id}`}>{t("text")}</FieldLabel>
-                  <Textarea
-                    id={`text-${o.id}`}
-                    value={o.text}
-                    disabled={processing}
-                    onChange={(e) =>
-                      updateOverlay(o.id, { text: e.target.value })
-                    }
-                  />
-                </Field>
-                <Range
-                  label={t("fontSize")}
-                  min={22}
-                  max={120}
-                  step={1}
-                  value={o.fontSize}
-                  disabled={processing}
-                  onChange={(fontSize) => updateOverlay(o.id, { fontSize })}
-                />
-                <Field>
-                  <FieldLabel htmlFor={`color-${o.id}`}>
-                    {t("color")}
-                  </FieldLabel>
-                  <Input
-                    id={`color-${o.id}`}
-                    type="color"
-                    value={o.color}
-                    disabled={processing}
-                    onChange={(e) =>
-                      updateOverlay(o.id, { color: e.target.value })
-                    }
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor={`align-${o.id}`}>
-                    {t("alignment")}
-                  </FieldLabel>
-                  <NativeSelect
-                    id={`align-${o.id}`}
-                    value={o.align}
-                    disabled={processing}
-                    onChange={(e) =>
-                      updateOverlay(o.id, {
-                        align: e.target.value as TextOverlay["align"],
-                      })
-                    }
-                  >
-                    {["left", "center", "right"].map((a) => (
-                      <NativeSelectOption key={a} value={a}>
-                        {t(a)}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </Field>
-                <div className="flex flex-wrap gap-2">
+            {s.textOverlays.length === 0 && (
+              <Blank title={t("addText")} description={t("dragText")} />
+            )}
+            <div className="flex flex-col gap-2">
+              {s.textOverlays.map((o) => (
+                <div key={o.id} className="flex min-w-0 items-center gap-1">
                   <Button
-                    variant={o.bold ? "secondary" : "outline"}
-                    aria-pressed={o.bold}
-                    disabled={processing}
-                    onClick={() => updateOverlay(o.id, { bold: !o.bold })}
+                    variant={activeTextId === o.id ? "secondary" : "outline"}
+                    aria-pressed={activeTextId === o.id}
+                    onClick={() => setSelectedTextId(o.id)}
+                    className="min-w-0 flex-1 justify-start"
                   >
-                    {t("bold")}
-                  </Button>
-                  <Button
-                    variant={o.background ? "secondary" : "outline"}
-                    aria-pressed={o.background}
-                    disabled={processing}
-                    onClick={() =>
-                      updateOverlay(o.id, { background: !o.background })
-                    }
-                  >
-                    {t("box")}
+                    <Type data-icon="inline-start" />
+                    <span className="truncate">{o.text || t("newText")}</span>
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
                     aria-label={t("toggleText")}
+                    aria-pressed={o.visible}
                     disabled={processing}
                     onClick={() => updateOverlay(o.id, { visible: !o.visible })}
                   >
                     {o.visible ? <Eye /> : <EyeOff />}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("removeText")}
-                    disabled={processing}
-                    onClick={() =>
-                      settings((s) => ({
-                        ...s,
-                        textOverlays: s.textOverlays.filter(
-                          (item) => item.id !== o.id,
-                        ),
-                      }))
-                    }
-                  >
-                    <Trash2 />
-                  </Button>
                 </div>
-              </FieldGroup>
-            ))}
+              ))}
+            </div>
+            {s.textOverlays
+              .filter((o) => o.id === activeTextId)
+              .map((o) => (
+                <FieldGroup key={o.id} className="rounded-lg border p-3">
+                  <Field>
+                    <FieldLabel htmlFor={`text-${o.id}`}>
+                      {t("text")}
+                    </FieldLabel>
+                    <Textarea
+                      id={`text-${o.id}`}
+                      value={o.text}
+                      disabled={processing}
+                      onChange={(e) =>
+                        updateOverlay(o.id, { text: e.target.value })
+                      }
+                    />
+                  </Field>
+                  <Range
+                    label={t("fontSize")}
+                    min={22}
+                    max={120}
+                    step={1}
+                    value={o.fontSize}
+                    disabled={processing}
+                    onChange={(fontSize) => updateOverlay(o.id, { fontSize })}
+                  />
+                  <Field>
+                    <FieldLabel htmlFor={`color-${o.id}`}>
+                      {t("color")}
+                    </FieldLabel>
+                    <Input
+                      id={`color-${o.id}`}
+                      type="color"
+                      value={o.color}
+                      disabled={processing}
+                      onChange={(e) =>
+                        updateOverlay(o.id, { color: e.target.value })
+                      }
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`align-${o.id}`}>
+                      {t("alignment")}
+                    </FieldLabel>
+                    <NativeSelect
+                      id={`align-${o.id}`}
+                      value={o.align}
+                      disabled={processing}
+                      onChange={(e) =>
+                        updateOverlay(o.id, {
+                          align: e.target.value as TextOverlay["align"],
+                        })
+                      }
+                    >
+                      {["left", "center", "right"].map((a) => (
+                        <NativeSelectOption key={a} value={a}>
+                          {t(a)}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={o.bold ? "secondary" : "outline"}
+                      aria-pressed={o.bold}
+                      disabled={processing}
+                      onClick={() => updateOverlay(o.id, { bold: !o.bold })}
+                    >
+                      {t("bold")}
+                    </Button>
+                    <Button
+                      variant={o.background ? "secondary" : "outline"}
+                      aria-pressed={o.background}
+                      disabled={processing}
+                      onClick={() =>
+                        updateOverlay(o.id, { background: !o.background })
+                      }
+                    >
+                      {t("box")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      aria-label={t("toggleText")}
+                      disabled={processing}
+                      onClick={() =>
+                        updateOverlay(o.id, { visible: !o.visible })
+                      }
+                    >
+                      {o.visible ? <Eye /> : <EyeOff />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      aria-label={t("removeText")}
+                      disabled={processing}
+                      onClick={() => {
+                        const index = s.textOverlays.findIndex(
+                          (item) => item.id === o.id,
+                        );
+                        setSelectedTextId(
+                          s.textOverlays[index + 1]?.id ??
+                            s.textOverlays[index - 1]?.id ??
+                            null,
+                        );
+                        settings((s) => ({
+                          ...s,
+                          textOverlays: s.textOverlays.filter(
+                            (item) => item.id !== o.id,
+                          ),
+                        }));
+                      }}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </FieldGroup>
+              ))}
             <p className="text-xs text-muted-foreground">{t("dragText")}</p>
           </FieldGroup>
         </TabsContent>
         <TabsContent value="Audio" className="overflow-y-auto p-4">
           <FieldGroup>
-            <Range
-              label={t("narrationVolume")}
-              value={s.audio.narrationVolume}
-              disabled={processing}
-              onChange={(narrationVolume) =>
-                settings((s) => ({
-                  ...s,
-                  audio: { ...s.audio, narrationVolume },
-                }))
-              }
-            />
-            <Range
-              label={t("sourceVolume")}
-              value={s.audio.sourceVolume}
-              disabled={processing}
-              onChange={(sourceVolume) =>
-                settings((s) => ({ ...s, audio: { ...s.audio, sourceVolume } }))
-              }
-            />
-            <Button
-              variant="outline"
-              disabled={processing}
-              aria-pressed={s.audio.sourceMuted}
-              onClick={() =>
-                settings((s) => ({
-                  ...s,
-                  audio: { ...s.audio, sourceMuted: !s.audio.sourceMuted },
-                }))
-              }
-            >
-              {t(s.audio.sourceMuted ? "unmuteSource" : "muteSource")}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={processing}
-              onClick={() => musicInput.current?.click()}
-            >
-              <Plus />
-              {t("addMusic")}
-            </Button>
-            <Field>
-              <FieldLabel htmlFor="music-asset">{t("music")}</FieldLabel>
-              <NativeSelect
-                id="music-asset"
-                value={s.audio.musicAssetId ?? ""}
+            <FieldSet>
+              <FieldLegend>{t("narration")}</FieldLegend>
+              <Range
+                label={t("narrationVolume")}
+                value={s.audio.narrationVolume}
                 disabled={processing}
-                onChange={(e) =>
+                onChange={(narrationVolume) =>
                   settings((s) => ({
                     ...s,
-                    audio: { ...s.audio, musicAssetId: e.target.value || null },
+                    audio: { ...s.audio, narrationVolume },
+                  }))
+                }
+              />
+            </FieldSet>
+            <FieldSet>
+              <FieldLegend>{t("sourceAudio")}</FieldLegend>
+              <Range
+                label={t("sourceVolume")}
+                value={s.audio.sourceVolume}
+                disabled={processing}
+                onChange={(sourceVolume) =>
+                  settings((s) => ({
+                    ...s,
+                    audio: { ...s.audio, sourceVolume },
+                  }))
+                }
+              />
+              <Button
+                variant="outline"
+                disabled={processing}
+                aria-pressed={s.audio.sourceMuted}
+                onClick={() =>
+                  settings((s) => ({
+                    ...s,
+                    audio: { ...s.audio, sourceMuted: !s.audio.sourceMuted },
                   }))
                 }
               >
-                <NativeSelectOption value="">{t("noMusic")}</NativeSelectOption>
-                {assets
-                  .filter((a) => a.kind === "audio" && a.id !== "source")
-                  .map((a) => (
-                    <NativeSelectOption key={a.id} value={a.id}>
+                {t(s.audio.sourceMuted ? "unmuteSource" : "muteSource")}
+              </Button>
+            </FieldSet>
+            <FieldSet>
+              <FieldLegend>{t("music")}</FieldLegend>
+              <Button
+                variant="outline"
+                disabled={processing}
+                onClick={() => musicInput.current?.click()}
+              >
+                <Plus />
+                {t("addMusic")}
+              </Button>
+              <Field>
+                <FieldLabel htmlFor="music-asset">{t("music")}</FieldLabel>
+                <NativeSelect
+                  id="music-asset"
+                  value={s.audio.musicAssetId ?? ""}
+                  disabled={processing}
+                  onChange={(e) =>
+                    settings((s) => ({
+                      ...s,
+                      audio: {
+                        ...s.audio,
+                        musicAssetId: e.target.value || null,
+                      },
+                    }))
+                  }
+                >
+                  <NativeSelectOption value="">
+                    {t("noMusic")}
+                  </NativeSelectOption>
+                  {assets
+                    .filter((a) => a.kind === "audio" && a.id !== "source")
+                    .map((a) => (
+                      <NativeSelectOption key={a.id} value={a.id}>
+                        {a.name}
+                      </NativeSelectOption>
+                    ))}
+                </NativeSelect>
+              </Field>
+              <Range
+                label={t("musicVolume")}
+                value={s.audio.musicVolume}
+                disabled={processing}
+                onChange={(musicVolume) =>
+                  settings((s) => ({
+                    ...s,
+                    audio: { ...s.audio, musicVolume },
+                  }))
+                }
+              />
+              {assets
+                .filter((a) => a.kind === "audio" && a.id !== "source")
+                .map((a) => (
+                  <div key={a.id} className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-sm">
                       {a.name}
-                    </NativeSelectOption>
-                  ))}
-              </NativeSelect>
-            </Field>
-            <Range
-              label={t("musicVolume")}
-              value={s.audio.musicVolume}
-              disabled={processing}
-              onChange={(musicVolume) =>
-                settings((s) => ({ ...s, audio: { ...s.audio, musicVolume } }))
-              }
-            />
-            {assets
-              .filter((a) => a.kind === "audio" && a.id !== "source")
-              .map((a) => (
-                <div key={a.id} className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {a.name}
-                  </span>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    disabled={processing}
-                    aria-label={t("removeMedia")}
-                    onClick={() =>
-                      void operation(
-                        () =>
-                          api(`/projects/${id}/assets/${a.id}`, {
-                            method: "DELETE",
-                          }),
-                        true,
-                        true,
-                      )
-                    }
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              ))}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      disabled={processing}
+                      aria-label={t("removeMedia")}
+                      onClick={() =>
+                        void operation(
+                          () =>
+                            api(`/projects/${id}/assets/${a.id}`, {
+                              method: "DELETE",
+                            }),
+                          true,
+                          true,
+                        )
+                      }
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                ))}
+            </FieldSet>
           </FieldGroup>
         </TabsContent>
       </Tabs>
@@ -1134,10 +1179,13 @@ export function ProjectEditor({ id }: { id: string }) {
                   s.slots[i]
                     ? {
                         ...s.slots[i],
-                        mode:
-                          i === 0 && ["fill", "fit"].includes(layout)
-                            ? (layout as "fill" | "fit")
-                            : s.slots[i].mode,
+                        ...(i === 0 && ["fill", "fit"].includes(layout)
+                          ? emptySlot(
+                              s.slots[i].assetId,
+                              layout as "fill" | "fit",
+                            )
+                          : {}),
+                        visible: s.slots[i].visible,
                       }
                     : emptySlot(),
                 ),
@@ -1216,7 +1264,6 @@ export function ProjectEditor({ id }: { id: string }) {
         </span>
         <div className="ml-auto flex items-center gap-1">
           <Button
-            size="icon"
             variant="ghost"
             aria-label={t("undo")}
             disabled={processing || !history.past.length}
@@ -1225,7 +1272,6 @@ export function ProjectEditor({ id }: { id: string }) {
             <Undo2 />
           </Button>
           <Button
-            size="icon"
             variant="ghost"
             aria-label={t("redo")}
             disabled={processing || !history.future.length}
@@ -1409,7 +1455,6 @@ export function ProjectEditor({ id }: { id: string }) {
         )}
         <Button
           variant="ghost"
-          size="icon-sm"
           aria-label={t("deleteProject")}
           disabled={processing}
           onClick={() => {

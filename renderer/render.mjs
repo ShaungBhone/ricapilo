@@ -1,4 +1,9 @@
-import { ratios, regions, placement } from "../frontend/lib/editor-core.mjs";
+import {
+  ratios,
+  regions,
+  placement,
+  backdropPlacement,
+} from "../frontend/lib/editor-core.mjs";
 
 export function renderPlan(input, assets, duration, assPath, output) {
   const settings = input.editorSettings;
@@ -22,15 +27,17 @@ export function renderPlan(input, assets, duration, assPath, output) {
     args.push("-stream_loop", "-1", "-i", asset.path);
     sources.push({ index: fileIndex, asset, primary: i === 0 });
     const p = placement(region, asset, slot);
+    const backdrop = backdropPlacement(region, asset);
     // Compose within a slot canvas so neighbouring slots cannot bleed into each other.
     filters.push(
-      `color=c=0x050505:s=${region.width}x${region.height}:r=30:d=${duration}[slotbg${i}]`,
+      `[${fileIndex}:v]split=2[sharpinput${i}][blurinput${i}]`,
+      `[blurinput${i}]scale=${backdrop.width}:${backdrop.height},setsar=1,fps=30,format=gbrp,gblur=sigma=${backdrop.blur}:steps=6,crop=${region.width}:${region.height}:${-backdrop.x}:${-backdrop.y}[slotbg${i}]`,
     );
     filters.push(
-      `[${fileIndex}:v]scale=${p.width}:${p.height},setsar=1,fps=30[scaled${i}]`,
+      `[sharpinput${i}]scale=${p.width}:${p.height},setsar=1,fps=30,format=gbrp[scaled${i}]`,
     );
     filters.push(
-      `[slotbg${i}][scaled${i}]overlay=x=${p.x}:y=${p.y}:shortest=1[placed${i}]`,
+      `[slotbg${i}][scaled${i}]overlay=x=${p.x}:y=${p.y}:shortest=1:format=auto[placed${i}]`,
     );
     let label = `placed${i}`;
     if (region.circle) {
@@ -40,7 +47,7 @@ export function renderPlan(input, assets, duration, assPath, output) {
       label = `masked${i}`;
     }
     filters.push(
-      `[${base}][${label}]overlay=x=${region.x}:y=${region.y}:shortest=1[canvas${i}]`,
+      `[${base}][${label}]overlay=x=${region.x}:y=${region.y}:shortest=1:format=auto[canvas${i}]`,
     );
     base = `canvas${i}`;
   }

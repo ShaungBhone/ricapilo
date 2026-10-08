@@ -23,7 +23,13 @@ import type {
   Slot,
   TextOverlay,
 } from "../lib/editor";
-import { regions, placement, captionAppearance } from "../lib/editor-core.mjs";
+import {
+  regions,
+  placement,
+  captionAppearance,
+  backdropPlacement,
+  type Region,
+} from "../lib/editor-core.mjs";
 import "@fontsource/noto-sans-myanmar/400.css";
 import "@fontsource/noto-sans-myanmar/600.css";
 import "@fontsource/noto-sans-myanmar/700.css";
@@ -38,6 +44,8 @@ type Controls = {
     index: number,
     position: ReturnType<typeof placement>,
     slot: Slot,
+    region: Region,
+    asset: EditorAsset,
   ) => ReactNode;
   renderTextControl?: (overlay: TextOverlay, style: CSSProperties) => ReactNode;
 };
@@ -101,6 +109,7 @@ export function VideoComposition({
             );
           if (!slot?.visible || !asset) return null;
           const p = placement(region, asset, slot);
+          const backdrop = backdropPlacement(region, asset);
           return (
             <div
               key={i}
@@ -124,6 +133,20 @@ export function VideoComposition({
                   premountFor={fps}
                   style={{
                     position: "absolute",
+                    left: backdrop.x,
+                    top: backdrop.y,
+                    width: backdrop.width,
+                    height: backdrop.height,
+                    maxWidth: "none",
+                    filter: `blur(${backdrop.blur}px)`,
+                  }}
+                />
+                <Video
+                  src={asset.src}
+                  muted
+                  premountFor={fps}
+                  style={{
+                    position: "absolute",
                     left: p.x,
                     top: p.y,
                     width: p.width,
@@ -132,7 +155,7 @@ export function VideoComposition({
                   }}
                 />
               </Loop>
-              {renderSlotControl?.(i, p, slot)}
+              {renderSlotControl?.(i, p, slot, region, asset)}
             </div>
           );
         })}

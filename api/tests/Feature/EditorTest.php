@@ -29,6 +29,28 @@ class EditorTest extends TestCase
         return Project::factory()->create(['user_id' => $user->id, ...$attributes]);
     }
 
+    public function test_crop_zoom_bounds_and_coordinates_round_trip(): void
+    {
+        $project = $this->ownProject();
+        $settings = app(EditorSettings::class)->defaults($project);
+        $settings['slots'][0]['mode'] = 'fit';
+        $settings['slots'][0]['x'] = 0.35;
+        $settings['slots'][0]['y'] = 0.65;
+        foreach ([0.1, 8] as $scale) {
+            $settings['slots'][0]['scale'] = $scale;
+            $this->patchJson('/api/v1/projects/'.$project->id, ['editor_settings' => $settings])
+                ->assertOk()->assertJsonPath('editor_settings.slots.0.scale', $scale)
+                ->assertJsonPath('editor_settings.slots.0.x', 0.35)
+                ->assertJsonPath('editor_settings.slots.0.y', 0.65);
+            $this->assertEquals($settings, $project->fresh()->editor_settings);
+        }
+        foreach ([0.09, 8.01] as $scale) {
+            $settings['slots'][0]['scale'] = $scale;
+            $this->patchJson('/api/v1/projects/'.$project->id, ['editor_settings' => $settings])
+                ->assertUnprocessable()->assertJsonValidationErrors('settings.slots.0.scale');
+        }
+    }
+
     public function test_visual_edits_persist_without_invalidating_narration_and_unchanged_saves_preserve_outputs(): void
     {
         $project = $this->ownProject(['script' => 'မင်္ဂလာပါ', 'audio_path' => 'audio.mp3', 'video_path' => 'video.mp4', 'status' => 'ready', 'captions' => [['text' => 'မင်္ဂလာပါ', 'startMs' => 0, 'endMs' => 2000]]]);

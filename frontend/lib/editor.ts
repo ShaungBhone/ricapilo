@@ -183,3 +183,14 @@ export function reconcilePolling(
     saved: next,
   };
 }
+
+export function gestureHistory(
+  history: History,
+  start: EditorDraft | null,
+  next: EditorDraft,
+  phase: "move" | "end",
+): History {
+  return phase === "end"
+    ? editHistory(start ? { ...history, present: start } : history, next)
+    : { ...history, present: next };
+}

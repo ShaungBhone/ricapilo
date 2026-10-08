@@ -352,7 +352,7 @@
     "fill": "Fill",
     "zoom": "Zoom",
     "toggleSlot": "Show / hide slot",
-    "dragMedia": "Drag the video in the preview to position it. Use arrow keys for finer adjustments.",
+    "dragMedia": "Drag the video to position it, or drag a corner to resize it. Use arrow keys to move and +/− to zoom.",
     "addText": "Add text",
     "newText": "Your text",
     "fontSize": "Font size",
@@ -408,6 +408,22 @@
     "selectedVideoAutomatic": "The selected video will be imported automatically when generation starts.",
     "transcriptOnlyPreview": "This project uses a transcript. You can review the script and generate narration with a plain background.",
     "pasteTranscript": "Paste transcript",
-    "recapProgressDescription": "You can review the recap script when it is ready."
+    "recapProgressDescription": "You can review the recap script when it is ready.",
+    "custom": "Custom",
+    "resizeNW": "Resize from top left",
+    "resizeNE": "Resize from top right",
+    "resizeSW": "Resize from bottom left",
+    "resizeSE": "Resize from bottom right",
+    "searchMatches": "{count, plural, one {# match} other {# matches}}",
+    "editWord": "Edit word",
+    "editCaption": "Text & timing",
+    "deleteSelection": "Delete selection",
+    "cancelEdit": "Cancel",
+    "wordActions": "Caption word actions",
+    "invalidCaptionTiming": "End time must be after start time, and both must be nonnegative numbers.",
+    "applyCaption": "Apply changes",
+    "selectedSlot": "Selected slot",
+    "narration": "Narration",
+    "sourceAudio": "Source audio"
   }
 }

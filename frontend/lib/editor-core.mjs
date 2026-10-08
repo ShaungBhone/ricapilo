@@ -1,3 +1,10 @@
+import {
+  getFillScale,
+  getCoverLayout,
+  BACKDROP_OVERSCALE,
+  getBackdropBlur,
+  isSameTransform,
+} from "./crop.mjs";
 export const ratios = {
   "9:16": [720, 1280],
   "16:9": [1280, 720],
@@ -126,4 +133,48 @@ export function captionDownload(captions, format) {
       )
       .join("\n")
   );
+}
+
+// Version-1 coordinates describe the video centre; recap uses centre offsets.
+// Scale is relative to the saved fit/fill base, so conversion preserves legacy crops.
+export function slotTransform(region, asset, slot) {
+  return {
+    scale:
+      slot.scale * (slot.mode === "fill" ? getFillScale(region, asset) : 1),
+    x: slot.x - 0.5,
+    y: slot.y - 0.5,
+  };
+}
+export function transformedSlot(region, asset, slot, transform) {
+  if (isSameTransform(slotTransform(region, asset, slot), transform))
+    return slot;
+  // Very narrow slots can need more than 8 contain units just to fill. Retain
+  // the cover base in that case so a valid Fill preset still fits the v1 range.
+  const mode = transform.scale > 8 ? "fill" : "fit";
+  return {
+    ...slot,
+    mode,
+    scale:
+      transform.scale / (mode === "fill" ? getFillScale(region, asset) : 1),
+    x: transform.x + 0.5,
+    y: transform.y + 0.5,
+  };
+}
+export function backdropPlacement(region, asset) {
+  const cover = getCoverLayout({ frame: region, source: asset });
+  const width = Math.max(
+    2,
+    Math.round((cover.width * BACKDROP_OVERSCALE) / 2) * 2,
+  );
+  const height = Math.max(
+    2,
+    Math.round((cover.height * BACKDROP_OVERSCALE) / 2) * 2,
+  );
+  return {
+    width,
+    height,
+    x: Math.round((region.width - width) / 2),
+    y: Math.round((region.height - height) / 2),
+    blur: getBackdropBlur(region),
+  };
 }

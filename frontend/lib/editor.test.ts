@@ -4,6 +4,7 @@ import {
   projectDraft,
   changes,
   editHistory,
+  gestureHistory,
   moveHistory,
   reconcilePolling,
   projectWorkflow,
@@ -137,4 +138,56 @@ test("polling preserves unsaved drafts and history, then picks up generated cont
     server,
   );
   assert.equal(clean.history.present.script, "Generated remotely");
+});
+
+test("a complete crop gesture is one undo entry and survives redo and reload", () => {
+  const start = projectDraft(project, []);
+  start.editor_settings.slots[0] = {
+    assetId: null,
+    mode: "fill",
+    x: 0.5,
+    y: 0.5,
+    scale: 1,
+    visible: true,
+  };
+  const intermediate = structuredClone(start);
+  intermediate.editor_settings.slots[0] = {
+    ...intermediate.editor_settings.slots[0],
+    mode: "fit",
+    x: 0.6,
+    scale: 2,
+  };
+  const final = structuredClone(intermediate);
+  final.editor_settings.slots[0].scale = 2.5;
+  // Pointer moves update present only. Pointer up/cancel commits against start.
+  const moving = gestureHistory(
+    { past: [], present: start, future: [] },
+    start,
+    intermediate,
+    "move",
+  );
+  assert.equal(moving.past.length, 0);
+  const history = gestureHistory(moving, start, final, "end");
+  assert.equal(history.past.length, 1);
+  assert.deepEqual(moveHistory(history, "undo").present, start);
+  assert.deepEqual(
+    moveHistory(moveHistory(history, "undo"), "redo").present,
+    final,
+  );
+  assert.deepEqual(
+    projectDraft(
+      {
+        ...project,
+        editor_settings: JSON.parse(JSON.stringify(final.editor_settings)),
+      },
+      [],
+    ).editor_settings,
+    final.editor_settings,
+  );
+});
+
+test("a cancelled no-op crop does not add undo history", () => {
+  const start = projectDraft(project, []);
+  const history = { past: [], present: start, future: [] };
+  assert.deepEqual(gestureHistory(history, start, start, "end"), history);
 });
