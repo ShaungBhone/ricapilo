@@ -1,7 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ForgotPasswordRequest;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
@@ -11,60 +17,55 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $r): JsonResponse
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $data = $r->validate(['name' => 'required|string|max:100', 'email' => 'required|email|max:255|unique:users', 'password' => ['required', 'confirmed', PasswordRule::min(10)->letters()->numbers()]]);
-        $user = User::create($data);
+        $user = User::create($request->validated());
         if (config('recap.email_verification_required')) {
             event(new Registered($user));
         }
 
         Auth::login($user);
-        $r->session()->regenerate();
+        $request->session()->regenerate();
 
         return response()->json($user, 201);
     }
 
-    public function login(Request $r): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
-        $data = $r->validate(['email' => 'required|email', 'password' => 'required|string']);
-        if (! Auth::attempt($data)) {
+        if (! Auth::attempt($request->validated())) {
             throw ValidationException::withMessages(['email' => __('app.email_or_password_is_incorrect')]);
         }
 
-        $r->session()->regenerate();
+        $request->session()->regenerate();
 
-        return response()->json($r->user());
+        return response()->json($request->user());
     }
 
-    public function logout(Request $r): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
         Auth::logout();
-        $r->session()->invalidate();
-        $r->session()->regenerateToken();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json(['message' => __('app.signed_out')]);
     }
 
-    public function forgot(Request $r): JsonResponse
+    public function forgot(ForgotPasswordRequest $request): JsonResponse
     {
-        $r->validate(['email' => 'required|email']);
-        Password::sendResetLink($r->only('email'));
+        Password::sendResetLink($request->only('email'));
 
         return response()->json(['message' => __('app.if_that_email_is_registered_a_reset_link_has_been_sent')]);
     }
 
-    public function reset(Request $r): JsonResponse
+    public function reset(ResetPasswordRequest $request): JsonResponse
     {
-        $r->validate(['token' => 'required', 'email' => 'required|email', 'password' => ['required', 'confirmed', PasswordRule::min(10)->letters()->numbers()]]);
-        $status = Password::reset($r->only('email', 'password', 'password_confirmation', 'token'), function (User $u, string $password): void {
-            $u->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60)])->save();
-            event(new PasswordReset($u));
+        $status = Password::reset($request->only('email', 'password', 'password_confirmation', 'token'), function (User $user, string $password): void {
+            $user->forceFill(['password' => Hash::make($password), 'remember_token' => Str::random(60)])->save();
+            event(new PasswordReset($user));
         });
         if ($status !== Password::PASSWORD_RESET) {
             throw ValidationException::withMessages(['email' => __($status)]);

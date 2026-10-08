@@ -1,15 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UploadAssetRequest;
 use App\Jobs\ProcessProject;
 use App\Models\Project;
 use App\Services\EditorSettings;
 use App\Services\Media;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
 
 class EditorController extends Controller
 {
@@ -23,7 +30,7 @@ class EditorController extends Controller
         abort_if(in_array($project->status, ['queued', 'processing', 'rendering']), 409, __('app.wait_for_the_current_generation_to_finish'));
     }
 
-    public function prepare(Request $request, int $id): mixed
+    public function prepare(Request $request, int $id): JsonResponse
     {
         $project = $this->project($request, $id);
         DB::transaction(function () use ($project): void {
@@ -40,30 +47,28 @@ class EditorController extends Controller
         return response()->json($project->fresh(), 202);
     }
 
-    public function assets(Request $request, int $id): mixed
+    public function assets(Request $request, int $id, Media $media): JsonResponse
     {
         $project = $this->project($request, $id);
         $assets = $project->editor_assets ?? [];
         if ($project->media_path) {
-            $assets[] = ['id' => 'source', 'name' => $project->title, ...app(Media::class)->metadata($project->media_path), 'path' => $project->media_path];
+            $assets[] = ['id' => 'source', 'name' => $project->title, ...$media->metadata($project->media_path), 'path' => $project->media_path];
         }
 
-        return array_map(function (array $asset): array {
+        return response()->json(array_map(function (array $asset): array {
             unset($asset['path']);
 
             return $asset;
-        }, $assets);
+        }, $assets));
     }
 
-    public function upload(Request $request, int $id): mixed
+    public function upload(UploadAssetRequest $request, int $id, Media $media): JsonResponse
     {
-        $project = $this->project($request, $id);
-        $this->mutable($project);
-        $request->validate(['file' => 'required|file|mimes:mp4,mov,webm,mp3,wav,m4a,ogg|max:307200']);
+        $project = $request->project();
         $file = $request->file('file');
         $path = $file->store('projects/'.$id.'/assets', 'local');
         try {
-            $asset = ['id' => (string) Str::uuid(), 'name' => $file->getClientOriginalName(), 'path' => $path, ...app(Media::class)->metadata($path)];
+            $asset = ['id' => (string) Str::uuid(), 'name' => $file->getClientOriginalName(), 'path' => $path, ...$media->metadata($path)];
             DB::transaction(function () use ($project, $asset): void {
                 $locked = Project::lockForUpdate()->findOrFail($project->id);
                 $this->mutable($locked);
@@ -71,7 +76,7 @@ class EditorController extends Controller
                 abort_if(count($assets) >= 20, 422);
                 $locked->update(['editor_assets' => [...$assets, $asset]]);
             });
-        } catch (\Throwable $throwable) {
+        } catch (Throwable $throwable) {
             Storage::disk('local')->delete($path);
             throw $throwable;
         }
@@ -81,7 +86,7 @@ class EditorController extends Controller
         return response()->json($asset, 201);
     }
 
-    public function stream(Request $request, int $id, string $assetId): mixed
+    public function stream(Request $request, int $id, string $assetId): BinaryFileResponse
     {
         $project = $this->project($request, $id);
         $asset = collect($project->editor_assets ?? [])->firstWhere('id', $assetId);
@@ -91,7 +96,7 @@ class EditorController extends Controller
         return response()->file(Storage::disk('local')->path($path));
     }
 
-    public function delete(Request $request, int $id, string $assetId, EditorSettings $editor): mixed
+    public function delete(Request $request, int $id, string $assetId, EditorSettings $editor): Response
     {
         $project = $this->project($request, $id);
         abort_if($assetId === 'source', 422);
@@ -112,7 +117,7 @@ class EditorController extends Controller
                 $settings['audio']['musicAssetId'] = null;
             }
 
-            $locked->update(['editor_settings' => $settings, 'editor_assets' => array_values(array_filter($assets, fn (array $a): bool => $a['id'] !== $assetId)), 'video_path' => null, 'status' => $locked->audio_path ? 'audio_ready' : $locked->status]);
+            $locked->update(['editor_settings' => $settings, 'editor_assets' => array_values(array_filter($assets, fn (array $existing): bool => $existing['id'] !== $assetId)), 'video_path' => null, 'status' => $locked->audio_path ? 'audio_ready' : $locked->status]);
 
             return $asset['path'];
         });

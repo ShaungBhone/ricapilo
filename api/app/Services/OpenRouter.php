@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
+use App\Ai\Agents\DiscoveryIntent;
 use App\Exceptions\GenerationException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
@@ -11,7 +14,7 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Audio;
-use Laravel\Ai\Messages\Message;
+use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\PendingResponses\PendingTranscriptionGeneration;
 use Laravel\Ai\Providers\OpenRouterProvider;
 use Throwable;
@@ -64,17 +67,14 @@ class OpenRouter
         }
     }
 
-    public function chat(string $model, array $messages): array
+    /** @return array{text: string, usage: array<string, mixed>} */
+    public function prompt(Agent $agent, string $model, string $prompt): array
     {
         $this->checkModel($model, 'text');
-        $gateway = app(OpenRouterGateway::class);
-        $this->configureProvider($gateway);
-        $instructions = ($messages[0]['role'] ?? null) === 'system' ? array_shift($messages)['content'] : '';
-        $prompt = array_pop($messages)['content'];
-        $history = array_map(fn (array $message): Message => new Message($message['role'], $message['content']), $messages);
+        $this->configureProvider(app(OpenRouterGateway::class));
 
         try {
-            $response = (new OpenRouterAgent($instructions, $history))->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90);
+            $response = $agent->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90);
         } catch (Throwable) {
             throw new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings');
         }
@@ -97,7 +97,7 @@ class OpenRouter
         $this->checkModel($model, 'text');
         $this->configureProvider(app(OpenRouterGateway::class));
         try {
-            return (new DiscoveryIntentAgent)->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90)->toArray();
+            return (new DiscoveryIntent)->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90)->toArray();
         } catch (Throwable) {
             throw new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings');
         }

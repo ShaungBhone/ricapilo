@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['user_id', 'name', 'instructions', 'first_message', 'llm_model', 'stt_model', 'tts_model', 'voice', 'silence_ms', 'enabled'])]
-#[Hidden([])]
 class Assistant extends Model
 {
     use HasFactory;

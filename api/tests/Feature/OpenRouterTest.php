@@ -2,16 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Ai\Agents\AssistantChat;
+use App\Ai\Agents\DiscoveryIntent;
+use App\Ai\Agents\RecapWriter;
 use App\Exceptions\GenerationException;
 use App\Jobs\ProcessProject;
 use App\Models\Assistant;
-use App\Models\Credential;
 use App\Models\Project;
 use App\Models\User;
-use App\Services\DiscoveryIntentAgent;
 use App\Services\Media;
 use App\Services\OpenRouter;
-use App\Services\OpenRouterAgent;
 use App\Services\OpenRouterGateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\PendingRequest;
@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Audio;
+use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Prompts\AudioPrompt;
 use Laravel\Ai\Prompts\TranscriptionPrompt;
@@ -55,7 +56,6 @@ class OpenRouterTest extends TestCase
         $user = User::factory()->create();
         config(['ai.providers.openrouter.key' => $key]);
         Ai::forgetInstance('openrouter');
-        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'ignored-legacy-key']);
 
         return $user;
     }
@@ -78,7 +78,7 @@ class OpenRouterTest extends TestCase
     public function test_transport_preserves_message_order_models_headers_usage_and_timeouts(): void
     {
         $messages = [
-            ['role' => 'system', 'content' => 'Respond only in Burmese.'],
+            ['role' => 'system', 'content' => 'Respond only in Burmese. Be concise.'],
             ['role' => 'user', 'content' => 'First'],
             ['role' => 'assistant', 'content' => 'Previous answer'],
             ['role' => 'user', 'content' => 'Next'],
@@ -103,7 +103,8 @@ class OpenRouterTest extends TestCase
             };
         });
         foreach (['first-key', 'second-key'] as $key) {
-            $result = $this->configuredService($key)->chat('test/chat', $messages);
+            $history = [new Message('user', 'First'), new Message('assistant', 'Previous answer')];
+            $result = $this->configuredService($key)->prompt(new AssistantChat('Be concise.', $history), 'test/chat', 'Next');
             $this->assertSame(['text' => 'မင်္ဂလာပါ', 'usage' => $usage], $result);
             Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer '.$key)
                 && $request->hasHeader('HTTP-Referer', config('recap.frontend_url'))
@@ -170,7 +171,7 @@ class OpenRouterTest extends TestCase
     {
         $user = $this->userWithKey();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        OpenRouterAgent::fake(['First answer', 'Second answer'])->preventStrayPrompts();
+        AssistantChat::fake(['First answer', 'Second answer'])->preventStrayPrompts();
         Transcription::fake(['Voice question', 'Uploaded transcript'])->preventStrayTranscriptions();
         Audio::fake([base64_encode('ID3spoken'), base64_encode('ID3preview')])->preventStrayAudio();
         $this->actingAs($user);
@@ -178,7 +179,7 @@ class OpenRouterTest extends TestCase
         $first->assertOk()->assertJsonPath('audio', base64_encode('ID3spoken'))->assertJsonPath('text', 'First answer');
         $id = $first->json('conversation.id');
         $this->postJson('/api/v1/talk', ['assistant_id' => $assistant->id, 'conversation_id' => $id, 'text' => 'Follow up'])->assertOk()->assertJsonCount(4, 'conversation.messages');
-        OpenRouterAgent::assertPrompted(fn (AgentPrompt $prompt) => $prompt->prompt === 'Follow up'
+        AssistantChat::assertPrompted(fn (AgentPrompt $prompt) => $prompt->prompt === 'Follow up'
             && count($prompt->agent->messages()) === 2);
         $this->post('/api/v1/transcribe', ['assistant_id' => $assistant->id, 'audio' => $this->uploadedAudio()])->assertOk()->assertJsonPath('text', 'Uploaded transcript');
         $this->postJson('/api/v1/assistants/'.$assistant->id.'/preview')->assertOk()->assertJsonPath('audio', base64_encode('ID3preview'));
@@ -259,12 +260,12 @@ class OpenRouterTest extends TestCase
         $media->shouldReceive('acquire')->once()->andReturn('source.mp4');
         $media->shouldReceive('chunks')->once()->with('source.mp4', Storage::disk('local')->path('projects/'.$project->id).'/chunks')->andReturn([$chunk]);
         Transcription::fake(['A source transcript'])->preventStrayTranscriptions();
-        OpenRouterAgent::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
+        RecapWriter::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
         (new ProcessProject($project->id, 'script'))->handle(app(OpenRouter::class), $media);
         $this->assertSame('A source transcript', $project->fresh()->transcript);
         $this->assertSame('မြန်မာ အနှစ်ချုပ်', $project->fresh()->script);
         Transcription::assertGenerated(fn (TranscriptionPrompt $prompt) => $prompt->language === null && $prompt->model === 'test/stt');
-        OpenRouterAgent::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, 'A source transcript'));
+        RecapWriter::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, 'A source transcript'));
     }
 
     public function test_invalid_base64_audio_from_sdk_is_rejected(): void
@@ -280,17 +281,17 @@ class OpenRouterTest extends TestCase
         Http::fake(['*/chat/completions' => Http::failedConnection()]);
         $this->expectException(GenerationException::class);
         $this->expectExceptionMessage('app.ai_generation_failed_check_your_key_credits_and_model_settings');
-        $this->configuredService()->chat('test/chat', [['role' => 'system', 'content' => 'Burmese'], ['role' => 'user', 'content' => 'Hello']]);
+        $this->configuredService()->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello');
     }
 
     public function test_discovery_uses_sdk_query_generation(): void
     {
-        DiscoveryIntentAgent::fake([['mode' => 'topic', 'query' => 'space documentaries', 'bilibili_query' => '太空纪录片', 'region' => 'MM', 'days' => 0]])->preventStrayPrompts();
+        DiscoveryIntent::fake([['mode' => 'topic', 'query' => 'space documentaries', 'bilibili_query' => '太空纪录片', 'region' => 'MM', 'days' => 0]])->preventStrayPrompts();
         Process::fake(['*' => Process::result(output: json_encode(['ok' => true, 'items' => []]))]);
         $user = $this->userWithKey();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
         $this->actingAs($user)->postJson('/api/v1/discover', ['assistant_id' => $assistant->id, 'prompt' => 'အာကာသ', 'platform' => 'bilibili'])->assertOk()->assertJsonPath('query', 'space documentaries');
-        DiscoveryIntentAgent::assertPrompted('အာကာသ');
+        DiscoveryIntent::assertPrompted('အာကာသ');
         Process::assertRan(fn ($process) => $process->command[2] === 'search' && $process->command[3] === '太空纪录片');
     }
 
@@ -298,14 +299,14 @@ class OpenRouterTest extends TestCase
     {
         $user = User::factory()->create();
         try {
-            app(OpenRouter::class)->chat('test/chat', [['role' => 'system', 'content' => 'Burmese'], ['role' => 'user', 'content' => 'Hello']]);
+            app(OpenRouter::class)->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello');
             $this->fail('Missing key must fail.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('key', $exception->errors());
         }
         DB::table('site_settings')->insert(['key' => 'disabled_models', 'value' => json_encode(['test/chat'])]);
         $this->expectException(ValidationException::class);
-        app(OpenRouter::class)->chat('test/chat', []);
+        app(OpenRouter::class)->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello');
     }
 
     #[DataProvider('failedResponses')]
@@ -317,7 +318,7 @@ class OpenRouterTest extends TestCase
         $this->expectExceptionMessage($message);
         $service = app(OpenRouter::class);
         match ($operation) {
-            'chat' => $service->chat('test/chat', [['role' => 'system', 'content' => 'Burmese'], ['role' => 'user', 'content' => 'Hello']]),
+            'chat' => $service->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello'),
             'transcribe' => $service->transcribe('test/stt', Transcription::fromBase64(base64_encode('audio'), 'audio/mpeg')),
             'speech' => $service->speech('test/tts', 'test-voice', 'Hello'),
         };

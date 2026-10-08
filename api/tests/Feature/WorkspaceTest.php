@@ -2,18 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Ai\Agents\AssistantChat;
+use App\Ai\Agents\RecapWriter;
 use App\Exceptions\GenerationException;
 use App\Jobs\ProcessProject;
 use App\Models\Assistant;
-use App\Models\Credential;
+use App\Models\Conversation;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Media;
 use App\Services\OpenRouter;
-use App\Services\OpenRouterAgent;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -126,7 +128,6 @@ class WorkspaceTest extends TestCase
         $u = User::factory()->create();
         $a = Assistant::factory()->create(['user_id' => $u->id]);
         $p = Project::factory()->create(['user_id' => $u->id, 'assistant_id' => $a->id]);
-        Credential::create(['user_id' => $u->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $this->actingAs($u)->postJson('/api/v1/projects/'.$p->id.'/generate', ['stage' => 'script'])->assertAccepted();
         $this->postJson('/api/v1/projects/'.$p->id.'/generate', ['stage' => 'script'])->assertConflict();
         $this->patchJson('/api/v1/projects/'.$p->id, ['script' => 'new'])->assertConflict();
@@ -138,7 +139,6 @@ class WorkspaceTest extends TestCase
         Queue::fake();
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $response = $this->actingAs($user)->postJson('/api/v1/projects', ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true]);
         $response->assertCreated()->assertJsonPath('status', 'queued')->assertJsonPath('stage', 'script')->assertJsonPath('has_media', false)->assertJsonMissingPath('generate_script');
         $id = $response->json('id');
@@ -158,7 +158,6 @@ class WorkspaceTest extends TestCase
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
         $data = ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'bilibili', 'source_id' => 'BV1xx411c7mD', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true];
         $this->actingAs($user)->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('key');
-        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         config(['ai.providers.openrouter.key' => 'test-env-key']);
         $assistant->update(['enabled' => false]);
         $this->postJson('/api/v1/projects', $data)->assertUnprocessable()->assertJsonValidationErrors('assistant_id');
@@ -188,10 +187,9 @@ class WorkspaceTest extends TestCase
         Storage::fake('local');
         $this->catalog();
         Transcription::fake(['A faithful source transcript.']);
-        OpenRouterAgent::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
+        RecapWriter::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $response = $this->actingAs($user)->postJson('/api/v1/projects', ['title' => 'Selected video', 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'format' => 'vertical', 'target_seconds' => 60, 'generate_script' => true])->assertCreated();
         $id = $response->json('id');
         Process::fake(function ($process) use ($id) {
@@ -206,7 +204,7 @@ class WorkspaceTest extends TestCase
         });
         (new ProcessProject($id, 'script'))->handle(app(OpenRouter::class), app(Media::class));
         $this->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('status', 'script_ready')->assertJsonPath('transcript', 'A faithful source transcript.')->assertJsonPath('script', 'မြန်မာ အနှစ်ချုပ်')->assertJsonPath('has_media', true)->assertJsonPath('editor_settings.slots.0.assetId', 'source')->assertJsonPath('has_audio', false)->assertJsonPath('has_video', false);
-        OpenRouterAgent::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, 'A faithful source transcript.'));
+        RecapWriter::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, 'A faithful source transcript.'));
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/audio/speech'));
         Queue::assertPushed(ProcessProject::class, 1);
     }
@@ -218,7 +216,6 @@ class WorkspaceTest extends TestCase
         Process::fake(['*' => Process::result(exitCode: 1)]);
         $user = User::factory()->create();
         $assistant = Assistant::factory()->create(['user_id' => $user->id]);
-        Credential::create(['user_id' => $user->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $project = Project::factory()->create(['user_id' => $user->id, 'assistant_id' => $assistant->id, 'source' => 'youtube', 'source_id' => 'abcdefghijk', 'transcript' => null, 'stage' => 'script', 'status' => 'queued']);
         $job = new ProcessProject($project->id, 'script');
         try {
@@ -234,6 +231,14 @@ class WorkspaceTest extends TestCase
         Queue::assertPushed(ProcessProject::class, 1);
         $job->failed(new GenerationException('Provider request failed'));
         $this->getJson('/api/v1/projects/'.$project->id)->assertOk()->assertJsonPath('source_unavailable', false)->assertJsonPath('error', 'Provider request failed');
+    }
+
+    public function test_unexpected_job_failures_store_a_generic_error_instead_of_internal_details(): void
+    {
+        $project = Project::factory()->create(['status' => 'processing']);
+        (new ProcessProject($project->id, 'script'))->failed(new \RuntimeException('SQLSTATE[HY000]: select * from secrets'));
+        $this->assertSame('failed', $project->fresh()->status);
+        $this->assertSame('app.generation_failed_check_your_providers_and_retry', $project->fresh()->getRawOriginal('error'));
     }
 
     public function test_changing_script_invalidates_audio_video_and_captions(): void
@@ -252,7 +257,6 @@ class WorkspaceTest extends TestCase
         Queue::fake();
         $u = User::factory()->create();
         $p = Project::factory()->create(['user_id' => $u->id, 'script' => 'old', 'audio_path' => 'old.mp3', 'video_path' => 'old.mp4', 'captions' => [['text' => 'old']], 'status' => 'ready']);
-        Credential::create(['user_id' => $u->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $this->actingAs($u)->postJson('/api/v1/projects/'.$p->id.'/generate', ['stage' => 'script'])->assertAccepted();
         $p->refresh();
         $this->assertNull($p->script);
@@ -274,26 +278,52 @@ class WorkspaceTest extends TestCase
     public function test_script_job_uses_source_and_persists_burmese_result(): void
     {
         $this->catalog();
-        OpenRouterAgent::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
+        RecapWriter::fake(['မြန်မာ အနှစ်ချုပ်'])->preventStrayPrompts();
         $u = User::factory()->create();
-        Credential::create(['user_id' => $u->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $a = Assistant::factory()->create(['user_id' => $u->id]);
         $p = Project::factory()->create(['user_id' => $u->id, 'assistant_id' => $a->id]);
         (new ProcessProject($p->id, 'script'))->handle(app(OpenRouter::class), app(Media::class));
         $this->assertSame('မြန်မာ အနှစ်ချုပ်', $p->fresh()->script);
         $this->assertSame('script_ready', $p->fresh()->status);
-        OpenRouterAgent::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, $p->transcript));
+        RecapWriter::assertPrompted(fn (AgentPrompt $prompt) => str_contains($prompt->prompt, $p->transcript));
     }
 
     public function test_text_talk_persists_history_without_exposing_credentials(): void
     {
         $this->catalog();
-        OpenRouterAgent::fake(['မင်္ဂလာပါ'])->preventStrayPrompts();
+        AssistantChat::fake(['မင်္ဂလာပါ'])->preventStrayPrompts();
         $u = User::factory()->create();
-        Credential::create(['user_id' => $u->id, 'provider' => 'openrouter', 'secret' => 'test-secret-key']);
         $a = Assistant::factory()->create(['user_id' => $u->id]);
         $this->actingAs($u)->postJson('/api/v1/talk', ['assistant_id' => $a->id, 'text' => 'Hello', 'speak' => false])->assertOk()->assertJsonPath('conversation.messages.1.content', 'မင်္ဂလာပါ');
         $this->assertDatabaseCount('conversations', 1);
+    }
+
+    public function test_talk_rejects_continuing_a_conversation_with_a_different_assistant(): void
+    {
+        $this->catalog();
+        AssistantChat::fake()->preventStrayPrompts();
+        $user = User::factory()->create();
+        $original = Assistant::factory()->create(['user_id' => $user->id]);
+        $other = Assistant::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::create(['user_id' => $user->id, 'assistant_id' => $original->id, 'title' => 'Hello', 'messages' => [['role' => 'user', 'content' => 'Hello']]]);
+        $this->actingAs($user)->postJson('/api/v1/talk', ['assistant_id' => $other->id, 'conversation_id' => $conversation->id, 'text' => 'Next'])->assertUnprocessable()->assertJsonValidationErrors('conversation_id');
+        $this->assertCount(1, $conversation->fresh()->messages);
+    }
+
+    public function test_transcribe_returns_404_for_a_disabled_assistant(): void
+    {
+        Transcription::fake()->preventStrayTranscriptions();
+        $user = User::factory()->create();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id, 'enabled' => false]);
+        $this->actingAs($user)->post('/api/v1/transcribe', ['assistant_id' => $assistant->id, 'audio' => UploadedFile::fake()->create('voice.wav', 10, 'audio/wav')], ['Accept' => 'application/json'])->assertNotFound();
+    }
+
+    public function test_admin_settings_are_readable_and_writable_by_admins(): void
+    {
+        $admin = User::factory()->create();
+        $admin->forceFill(['is_admin' => true])->save();
+        $this->actingAs($admin)->getJson('/api/v1/admin')->assertOk()->assertJsonPath('disabled_models', []);
+        $this->putJson('/api/v1/admin', ['disabled_models' => ['test/chat']])->assertOk()->assertJsonPath('disabled_models', ['test/chat']);
     }
 
     public function test_signed_relative_verification_link_works_through_the_frontend_proxy(): void
