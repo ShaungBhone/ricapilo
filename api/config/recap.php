@@ -9,6 +9,7 @@ return [
     'renderer_url' => env('RENDERER_URL', 'http://renderer:4000'),
     'renderer_token' => env('RENDERER_TOKEN'),
     'ffmpeg' => env('FFMPEG_BINARY', 'ffmpeg'),
+    'ffprobe' => env('FFPROBE_BINARY', 'ffprobe'),
     'media_python' => env('MEDIA_PYTHON', 'python3'),
     'bilibili_script' => env('BILIBILI_SCRIPT', base_path('../scripts/bilibili.py')),
     'yt_dlp' => env('YT_DLP_BINARY', 'yt-dlp'),

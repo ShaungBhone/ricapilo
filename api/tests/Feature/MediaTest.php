@@ -6,6 +6,7 @@ use App\Exceptions\GenerationException;
 use App\Models\Project;
 use App\Services\Media;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -62,5 +63,40 @@ class MediaTest extends TestCase
         } catch (GenerationException) {
             Process::assertNothingRan();
         }
+    }
+
+    public function test_probes_use_the_configured_ffprobe_binary(): void
+    {
+        Storage::fake('local');
+        config(['recap.ffprobe' => '/custom/ffprobe']);
+        Process::fake([
+            '*noprint_wrappers*' => Process::result(output: '2.5'),
+            '*' => Process::result(output: json_encode([
+                'format' => ['duration' => 3],
+                'streams' => [['codec_type' => 'audio']],
+            ])),
+        ]);
+
+        $this->assertSame(2.5, app(Media::class)->duration('/tmp/voice.mp3'));
+        $this->assertSame('audio', app(Media::class)->metadata('voice.mp3')['kind']);
+        Process::assertRanTimes(fn ($process): bool => $process->command[0] === '/custom/ffprobe', 2);
+    }
+
+    public function test_concat_failure_reports_audio_assembly_error(): void
+    {
+        $directory = sys_get_temp_dir().'/media-test-'.uniqid();
+        mkdir($directory);
+        Process::fake(['*' => Process::result(exitCode: 1)]);
+
+        try {
+            app(Media::class)->concat([$directory.'/voice-0.mp3'], $directory.'/narration.mp3');
+            $this->fail('Concat must fail.');
+        } catch (GenerationException $generationException) {
+            $this->assertSame('app.audio_assembly_failed', $generationException->getMessage());
+        } finally {
+            File::deleteDirectory($directory);
+        }
+
+        Process::assertRan(fn ($process): bool => in_array('concat', $process->command, true));
     }
 }

@@ -6,12 +6,12 @@ namespace App\Ai;
 
 use App\Ai\Agents\DiscoveryIntent;
 use App\Exceptions\GenerationException;
+use App\Services\Media;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Contracts\Agent;
@@ -20,6 +20,8 @@ use Throwable;
 
 class OpenRouter
 {
+    public function __construct(private readonly Media $media) {}
+
     public function ensureConfigured(): void
     {
         $key = config('ai.providers.openrouter.key');
@@ -164,7 +166,7 @@ class OpenRouter
             }
 
             if ($response->mimeType() === 'audio/pcm') {
-                $bytes = $this->pcmToMp3($bytes);
+                $bytes = $this->media->pcmToMp3($bytes);
             }
 
             $hasId3Header = str_starts_with($bytes, 'ID3');
@@ -176,42 +178,6 @@ class OpenRouter
             return $bytes;
         } catch (Throwable) {
             throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
-        }
-    }
-
-    private function pcmToMp3(string $bytes): string
-    {
-        $input = tempnam(sys_get_temp_dir(), 'recap-pcm-');
-        $output = tempnam(sys_get_temp_dir(), 'recap-mp3-');
-        try {
-            if ($input === false || $output === false || file_put_contents($input, $bytes) === false) {
-                throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
-            }
-
-            $result = Process::timeout(90)->run([
-                config('recap.ffmpeg'),
-                '-y',
-                '-f', 's16le',
-                '-ar', '24000',
-                '-ac', '1',
-                '-i', $input,
-                '-c:a', 'libmp3lame',
-                '-f', 'mp3',
-                $output,
-            ]);
-            if (! $result->successful()) {
-                throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
-            }
-
-            return file_get_contents($output);
-        } finally {
-            if ($input !== false) {
-                unlink($input);
-            }
-
-            if ($output !== false) {
-                unlink($output);
-            }
         }
     }
 }

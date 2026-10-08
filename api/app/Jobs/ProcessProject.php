@@ -16,7 +16,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Transcription;
 use Throwable;
@@ -47,10 +46,7 @@ class ProcessProject implements ShouldQueue
             $project->update(['status' => 'processing', 'error' => null]);
             $media->acquire($project);
             $project->refresh();
-            $settings = $project->editor_settings ?? app(EditorSettings::class)->defaults($project);
-            if (! $settings['slots'][0]['assetId']) {
-                $settings['slots'][0]['assetId'] = 'source';
-            }
+            $settings = app(EditorSettings::class)->withSourceSlot($project);
 
             $status = match (true) {
                 (bool) $project->video_path => 'ready',
@@ -131,20 +127,7 @@ class ProcessProject implements ShouldQueue
                 throw new GenerationException('app.the_narration_script_is_empty');
             }
 
-            $playlist = array_map(fn (string $path): string => "file '".$path."'", $segments);
-            file_put_contents($dir.'/concat.txt', implode("\n", $playlist));
-            $concat = Process::timeout(300)->run([
-                config('recap.ffmpeg'),
-                '-y',
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', $dir.'/concat.txt',
-                '-c', 'copy',
-                $dir.'/narration.mp3',
-            ]);
-            if (! $concat->successful()) {
-                throw new GenerationException('app.audio_assembly_failed');
-            }
+            $media->concat($segments, $dir.'/narration.mp3');
 
             $project->update([
                 'audio_path' => 'projects/'.$project->id.'/narration.mp3',

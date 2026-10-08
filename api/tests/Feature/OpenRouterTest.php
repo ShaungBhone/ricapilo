@@ -248,11 +248,9 @@ class OpenRouterTest extends TestCase
         ]);
         $media = $this->mock(Media::class);
         $media->shouldReceive('duration')->once()->andReturn(2.0);
-        Process::fake(function ($process) {
-            file_put_contents($process->command[count($process->command) - 1], 'ID3narration');
-
-            return Process::result();
-        });
+        $media->shouldReceive('concat')
+            ->once()
+            ->andReturnUsing(fn (array $paths, string $output): int|false => file_put_contents($output, 'ID3narration'));
         (new ProcessProject($project->id, 'audio'))->handle(app(OpenRouter::class), $media);
         $project->refresh();
         $this->assertSame('audio_ready', $project->status);

@@ -41,6 +41,19 @@ class EditorSettings
         ];
     }
 
+    /**
+     * Get the project's editor settings with the first slot pointing at the source video when empty.
+     */
+    public function withSourceSlot(Project $project): array
+    {
+        $settings = $project->editor_settings ?? $this->defaults($project);
+        if (! $settings['slots'][0]['assetId']) {
+            $settings['slots'][0]['assetId'] = 'source';
+        }
+
+        return $settings;
+    }
+
     public function validate(array $settings, Project $project): array
     {
         $assets = $project->editor_assets ?? [];
