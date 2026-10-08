@@ -105,6 +105,16 @@ export type Project = {
   script: string | null;
   status: string;
   stage: string | null;
+  generation_progress: {
+    step:
+      | "queued"
+      | "downloading"
+      | "extracting"
+      | "transcribing"
+      | "writing"
+      | "complete";
+    percent: number;
+  } | null;
   error: string | null;
   source_unavailable: boolean;
   format: "vertical" | "landscape";

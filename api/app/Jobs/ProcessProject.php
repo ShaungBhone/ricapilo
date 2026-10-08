@@ -73,10 +73,19 @@ class ProcessProject implements ShouldQueue
             $transcript = $project->transcript;
             if (! $transcript) {
                 $parts = [];
-                foreach ($media->chunks($media->acquire($project), $dir.'/chunks') as $chunk) {
+                if (! $project->media_path) {
+                    $this->progress($project, 'downloading', 10);
+                }
+
+                $path = $media->acquire($project);
+                $this->progress($project, 'extracting', 40);
+                $chunks = $media->chunks($path, $dir.'/chunks');
+                $this->progress($project, 'transcribing', 50);
+                foreach ($chunks as $index => $chunk) {
                     $result = $ai->transcribe($assistant->stt_model, Transcription::fromPath($chunk));
                     $parts[] = $result['text'];
                     $usage[] = ['stage' => 'transcription', 'usage' => $result['usage'] ?? []];
+                    $this->progress($project, 'transcribing', 50 + (int) floor(30 * ($index + 1) / count($chunks)));
                 }
 
                 $transcript = implode("\n\n", $parts);
@@ -88,10 +97,16 @@ class ProcessProject implements ShouldQueue
             }
 
             $writer = new RecapWriter($project->target_seconds, $assistant->instructions);
+            $this->progress($project, 'writing', 85);
             $prompt = 'Source title: '.$project->title."\nSource transcript:\n".$transcript;
             $result = $ai->prompt($writer, $assistant->llm_model, $prompt);
             $usage[] = ['stage' => 'script', 'usage' => $result['usage']];
-            $project->update(['script' => $result['text'], 'status' => 'script_ready', 'usage' => $usage]);
+            $project->update([
+                'script' => $result['text'],
+                'status' => 'script_ready',
+                'usage' => $usage,
+                'generation_progress' => ['step' => 'complete', 'percent' => 100],
+            ]);
         } elseif ($this->stage === 'audio') {
             if (! $project->script) {
                 throw new GenerationException('app.review_a_script_before_generating_narration');
@@ -168,6 +183,11 @@ class ProcessProject implements ShouldQueue
 
             $project->update(['video_path' => $relative, 'status' => 'ready']);
         }
+    }
+
+    private function progress(Project $project, string $step, int $percent): void
+    {
+        $project->update(['generation_progress' => ['step' => $step, 'percent' => $percent]]);
     }
 
     public function failed(?Throwable $error): void

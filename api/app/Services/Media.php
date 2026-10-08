@@ -116,7 +116,7 @@ class Media
         $output = tempnam(sys_get_temp_dir(), 'recap-mp3-');
         try {
             if ($input === false || $output === false || file_put_contents($input, $bytes) === false) {
-                throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
+                throw new GenerationException('app.narration_audio_conversion_failed');
             }
 
             $result = Process::timeout(90)->run([
@@ -131,7 +131,7 @@ class Media
                 $output,
             ]);
             if (! $result->successful()) {
-                throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
+                throw new GenerationException('app.narration_audio_conversion_failed');
             }
 
             return file_get_contents($output);

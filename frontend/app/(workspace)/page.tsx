@@ -1,10 +1,9 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import {
   ArrowUp,
   Mic,
@@ -41,12 +40,14 @@ import {
 import { Blank, Feedback } from "@/components/feedback";
 import { useMicrophone } from "@/hooks/use-microphone";
 import { api, json, Assistant, Video } from "@/lib/api";
+import { useRecapProgress } from "@/components/recap-progress-provider";
 export default function Home() {
   const t = useTranslations();
   const locale = useLocale();
   const [popular, setPopular] = useState(false);
 
-  const router = useRouter();
+  const recapProgress = useRecapProgress();
+  const creating = useRef(false);
   const [prompt, setPrompt] = useState("");
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [assistant, setAssistant] = useState("");
@@ -111,28 +112,27 @@ export default function Home() {
     }
   }
   async function select(v: Video) {
+    if (creating.current) return;
     if (!assistant) {
       setMessage(t("workspace.chooseAnAssistantForThisProject"));
       return;
     }
+    creating.current = true;
     setBusy(true);
     try {
-      const p = await api<{ id: number }>("/projects", {
-        method: "POST",
-        body: json({
-          title: v.title,
-          source: v.platform,
-          source_id: v.id,
-          assistant_id: Number(assistant),
-          format: "vertical",
-          target_seconds: 60,
-          generate_script: true,
-        }),
+      await recapProgress.create(v.title, {
+        title: v.title,
+        source: v.platform,
+        source_id: v.id,
+        assistant_id: Number(assistant),
+        format: "vertical",
+        target_seconds: 60,
+        generate_script: true,
       });
-      router.push(`/projects/${p.id}`);
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
+      creating.current = false;
       setBusy(false);
     }
   }

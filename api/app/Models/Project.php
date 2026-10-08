@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Model;
     'script',
     'status',
     'stage',
+    'generation_progress',
     'error',
     'audio_path',
     'video_path',
@@ -77,6 +78,7 @@ class Project extends Model
     protected function casts(): array
     {
         return [
+            'generation_progress' => 'array',
             'editor_settings' => 'array',
             'editor_assets' => 'array',
             'captions' => 'array',

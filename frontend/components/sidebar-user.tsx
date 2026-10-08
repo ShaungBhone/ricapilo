@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/sidebar";
 import { resolveLocale } from "@/i18n/locales";
 import { api, type User } from "@/lib/api";
+import { useRecapProgress } from "@/components/recap-progress-provider";
 
 function UserIdentity({ user }: { user: User }) {
   const initials = user.name
@@ -72,6 +73,7 @@ export function SidebarUser({ user }: { user: User }) {
   const { theme, setTheme } = useTheme();
   const { isMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
+  const recapProgress = useRecapProgress();
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState("");
 
@@ -80,6 +82,7 @@ export function SidebarUser({ user }: { user: User }) {
     setError("");
     try {
       await api("/auth/logout", { method: "POST" });
+      recapProgress.clear();
       router.replace("/login");
     } catch (error) {
       setError(

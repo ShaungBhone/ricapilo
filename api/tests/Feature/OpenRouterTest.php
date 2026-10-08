@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Ai;
 use Laravel\Ai\Audio;
+use Laravel\Ai\Exceptions\InsufficientCreditsException;
 use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Prompts\AudioPrompt;
@@ -227,7 +228,7 @@ class OpenRouterTest extends TestCase
             $this->configuredService()->speech('google/gemini-tts', 'Kore', 'Hello');
             $this->fail('Conversion must fail.');
         } catch (GenerationException $generationException) {
-            $this->assertSame('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese', $generationException->getMessage());
+            $this->assertSame('app.narration_audio_conversion_failed', $generationException->getMessage());
         }
 
         foreach ($paths as $path) {
@@ -288,11 +289,118 @@ class OpenRouterTest extends TestCase
         RecapWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'A source transcript'));
     }
 
+    public function test_script_progress_follows_completed_chunks_and_reaches_100_only_with_a_script(): void
+    {
+        Storage::fake('local');
+        $user = $this->userWithKey();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'assistant_id' => $assistant->id,
+            'transcript' => null,
+            'media_path' => null,
+        ]);
+        Storage::disk('local')->put('chunk.mp3', 'source audio');
+        $chunk = Storage::disk('local')->path('chunk.mp3');
+        $media = $this->mock(Media::class);
+        $media->shouldReceive('acquire')->once()->andReturn('source.mp4');
+        $media->shouldReceive('chunks')->once()->andReturn([$chunk, $chunk]);
+        Transcription::fake(['First chunk', 'Second chunk'])->preventStrayTranscriptions();
+        RecapWriter::fake(['Recap script'])->preventStrayPrompts();
+        $milestones = [];
+        Project::updated(function (Project $updated) use ($project, &$milestones): void {
+            if ($updated->id === $project->id && $updated->wasChanged('generation_progress')) {
+                $milestones[] = $updated->generation_progress;
+            }
+        });
+
+        (new ProcessProject($project->id, 'script'))->handle(app(OpenRouter::class), $media);
+
+        $this->assertSame([
+            ['step' => 'downloading', 'percent' => 10],
+            ['step' => 'extracting', 'percent' => 40],
+            ['step' => 'transcribing', 'percent' => 50],
+            ['step' => 'transcribing', 'percent' => 65],
+            ['step' => 'transcribing', 'percent' => 80],
+            ['step' => 'writing', 'percent' => 85],
+            ['step' => 'complete', 'percent' => 100],
+        ], $milestones);
+        $this->assertSame('script_ready', $project->fresh()->status);
+        $this->assertSame('Recap script', $project->fresh()->script);
+        Transcription::assertGenerated(fn (TranscriptionPrompt $prompt): bool => $prompt->model === 'test/stt');
+        RecapWriter::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Second chunk'));
+    }
+
+    public function test_existing_transcript_skips_source_steps_and_failed_writing_preserves_progress(): void
+    {
+        Storage::fake('local');
+        $user = $this->userWithKey();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'assistant_id' => $assistant->id,
+            'transcript' => 'Existing transcript',
+            'script' => null,
+        ]);
+        $media = $this->mock(Media::class);
+        $media->shouldNotReceive('acquire');
+        $media->shouldNotReceive('chunks');
+        Transcription::fake()->preventStrayTranscriptions();
+        Http::fake(['*/chat/completions' => Http::response(['error' => ['message' => 'No credits']], 402)]);
+        $job = new ProcessProject($project->id, 'script');
+
+        try {
+            $job->handle(app(OpenRouter::class), $media);
+            $this->fail('Writing failure must stop generation.');
+        } catch (GenerationException $generationException) {
+            $job->failed($generationException);
+        }
+
+        $this->assertSame('failed', $project->fresh()->status);
+        $this->assertSame('app.openrouter_insufficient_credits', $project->fresh()->getRawOriginal('error'));
+        $this->assertSame(['step' => 'writing', 'percent' => 85], $project->fresh()->generation_progress);
+        $this->assertNull($project->fresh()->script);
+        Transcription::assertNothingGenerated();
+    }
+
+    public function test_existing_media_skips_downloading_and_failed_transcription_preserves_progress(): void
+    {
+        Storage::fake('local');
+        $user = $this->userWithKey();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'assistant_id' => $assistant->id,
+            'transcript' => null,
+            'media_path' => 'source.mp4',
+        ]);
+        $audio = $this->uploadedAudio();
+        Storage::disk('local')->put('chunk.wav', file_get_contents($audio->getRealPath()));
+        $media = $this->mock(Media::class);
+        $media->shouldReceive('acquire')->once()->andReturn('source.mp4');
+        $media->shouldReceive('chunks')->once()->andReturn([Storage::disk('local')->path('chunk.wav')]);
+        Http::fake(['*/audio/transcriptions' => Http::response(['error' => ['message' => 'No credits']], 402)]);
+        RecapWriter::fake()->preventStrayPrompts();
+        $job = new ProcessProject($project->id, 'script');
+
+        try {
+            $job->handle(app(OpenRouter::class), $media);
+            $this->fail('Transcription failure must stop generation.');
+        } catch (GenerationException $generationException) {
+            $job->failed($generationException);
+        }
+
+        $this->assertSame('failed', $project->fresh()->status);
+        $this->assertSame('app.openrouter_insufficient_credits', $project->fresh()->getRawOriginal('error'));
+        $this->assertSame(['step' => 'transcribing', 'percent' => 50], $project->fresh()->generation_progress);
+        RecapWriter::assertNeverPrompted();
+    }
+
     public function test_invalid_base64_audio_from_sdk_is_rejected(): void
     {
         Audio::fake(['invalid base64!'])->preventStrayAudio();
         $this->expectException(GenerationException::class);
-        $this->expectExceptionMessage('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
+        $this->expectExceptionMessage('app.narration_returned_invalid_audio');
         $this->configuredService()->speech('test/tts', 'test-voice', 'Hello');
     }
 
@@ -300,7 +408,7 @@ class OpenRouterTest extends TestCase
     {
         Http::fake(['*/chat/completions' => Http::failedConnection()]);
         $this->expectException(GenerationException::class);
-        $this->expectExceptionMessage('app.ai_generation_failed_check_your_key_credits_and_model_settings');
+        $this->expectExceptionMessage('app.openrouter_connection_failed');
         $this->configuredService()->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello');
     }
 
@@ -344,12 +452,65 @@ class OpenRouterTest extends TestCase
         app(OpenRouter::class)->prompt(new AssistantChat('Burmese'), 'test/chat', 'Hello');
     }
 
+    public function test_original_provider_exception_is_retained_for_diagnosis(): void
+    {
+        Http::fake(['*/chat/completions' => Http::response(['error' => ['message' => 'private-provider-detail']], 402)]);
+        try {
+            $this->configuredService()->prompt(new RecapWriter(60, 'Concise'), 'test/chat', 'Hello');
+            $this->fail('Credit failure must stop writing.');
+        } catch (GenerationException $generationException) {
+            $this->assertSame('app.openrouter_insufficient_credits', $generationException->getMessage());
+            $this->assertInstanceOf(InsufficientCreditsException::class, $generationException->getPrevious());
+        }
+    }
+
+    public function test_existing_application_exception_is_preserved(): void
+    {
+        Http::fake(['*/audio/speech' => Http::response('pcm', 200, ['Content-Type' => 'audio/pcm'])]);
+        $original = new GenerationException('app.narration_audio_conversion_failed');
+        $media = $this->mock(Media::class);
+        $media->shouldReceive('pcmToMp3')->once()->andThrow($original);
+        try {
+            $this->configuredService()->speech('google/gemini-tts', 'Kore', 'Hello');
+            $this->fail('Conversion must stop narration.');
+        } catch (GenerationException $generationException) {
+            $this->assertSame($original, $generationException);
+        }
+    }
+
+    public function test_provider_api_errors_and_stored_job_errors_follow_requested_locale(): void
+    {
+        Http::fake(['*/audio/transcriptions' => Http::response(['error' => ['message' => 'private-provider-detail']], 402)]);
+        $user = $this->userWithKey();
+        $assistant = Assistant::factory()->create(['user_id' => $user->id]);
+        $project = Project::factory()->create(['user_id' => $user->id, 'error' => 'app.openrouter_insufficient_credits']);
+        $this->actingAs($user);
+        foreach (['en', 'my'] as $locale) {
+            $message = trans('app.openrouter_insufficient_credits', [], $locale);
+            $this->withHeader('Accept-Language', $locale)
+                ->post('/api/v1/transcribe', ['assistant_id' => $assistant->id, 'audio' => $this->uploadedAudio()], ['Accept' => 'application/json'])
+                ->assertInternalServerError()
+                ->assertExactJson(['message' => $message]);
+            $this->getJson('/api/v1/projects/'.$project->id)
+                ->assertOk()
+                ->assertJsonPath('error', $message);
+        }
+    }
+
+    public function test_discovery_provider_failures_use_the_shared_mapping(): void
+    {
+        Http::fake(['*/chat/completions' => Http::response(['error' => ['message' => 'private-provider-detail']], 429)]);
+        $this->expectException(GenerationException::class);
+        $this->expectExceptionMessage('app.openrouter_rate_limited');
+        $this->configuredService()->discoveryIntent('test/chat', 'Find documentaries');
+    }
+
     #[DataProvider('failedResponses')]
-    public function test_provider_and_malformed_responses_use_existing_errors(string $operation, int $status, mixed $body, string $message): void
+    public function test_provider_and_malformed_responses_use_accurate_errors(string $operation, int $status, mixed $body, string $message): void
     {
         Http::fake([
-            '*/chat/completions' => Http::response($body, $status),
-            '*/audio/*' => Http::response($body, $status),
+            '*/chat/completions' => $status === 0 ? Http::failedConnection() : Http::response($body, $status),
+            '*/audio/*' => $status === 0 ? Http::failedConnection() : Http::response($body, $status),
         ]);
         $this->userWithKey();
         $this->expectException(GenerationException::class);
@@ -364,19 +525,31 @@ class OpenRouterTest extends TestCase
 
     public static function failedResponses(): array
     {
-        $chat = 'app.ai_generation_failed_check_your_key_credits_and_model_settings';
-        $stt = 'app.transcription_failed_check_the_selected_model_and_source_audio';
-        $tts = 'app.narration_failed_check_that_the_model_supports_this_voice_and_burmese';
+        $cases = [];
+        foreach (['chat', 'transcribe', 'speech'] as $operation) {
+            foreach ([
+                402 => 'openrouter_insufficient_credits',
+                429 => 'openrouter_rate_limited',
+                503 => 'openrouter_temporarily_unavailable',
+                0 => 'openrouter_connection_failed',
+                401 => 'openrouter_access_rejected',
+                403 => 'openrouter_access_rejected',
+                500 => match ($operation) {
+                    'chat' => 'recap_writing_failed_unknown_cause',
+                    'transcribe' => 'transcription_failed_unknown_cause',
+                    'speech' => 'narration_failed_unknown_cause',
+                },
+            ] as $status => $message) {
+                $cases[$operation.'-'.$status] = [$operation, $status, ['error' => ['message' => 'private-provider-detail']], 'app.'.$message];
+            }
+        }
 
-        return [
-            ['chat', 402, ['error' => ['message' => 'No credits']], $chat],
+        return array_merge($cases, [
             ['chat', 200, ['choices' => [['message' => ['content' => ' ']]]], 'app.the_model_returned_no_text'],
-            ['transcribe', 500, [], $stt],
-            ['transcribe', 200, ['text' => ''], $stt],
-            ['speech', 429, [], $tts],
-            ['speech', 200, ['error' => 'bad voice'], $tts],
-            ['speech', 200, 'not audio', $tts],
-            ['speech', 200, '', $tts],
-        ];
+            ['transcribe', 200, ['text' => ''], 'app.transcription_returned_no_text'],
+            ['speech', 200, ['error' => 'bad voice'], 'app.narration_returned_invalid_audio'],
+            ['speech', 200, 'not audio', 'app.narration_returned_invalid_audio'],
+            ['speech', 200, '', 'app.narration_returned_invalid_audio'],
+        ]);
     }
 }

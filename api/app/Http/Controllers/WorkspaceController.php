@@ -169,6 +169,7 @@ class WorkspaceController extends Controller
                 ...$validated,
                 'status' => $generateScript ? 'queued' : 'draft',
                 'stage' => $generateScript ? 'script' : null,
+                'generation_progress' => $generateScript ? ['step' => 'queued', 'percent' => 0] : null,
             ]);
             if ($generateScript) {
                 ProcessProject::dispatch($project->id, 'script')->afterCommit();
@@ -311,7 +312,12 @@ class WorkspaceController extends Controller
                 $locked->video_path = null;
             }
 
-            $locked->update(['status' => 'queued', 'stage' => $stage, 'error' => null]);
+            $locked->update([
+                'status' => 'queued',
+                'stage' => $stage,
+                'error' => null,
+                'generation_progress' => $stage === 'script' ? ['step' => 'queued', 'percent' => 0] : null,
+            ]);
             ProcessProject::dispatch($project->id, $stage)->afterCommit();
         });
 

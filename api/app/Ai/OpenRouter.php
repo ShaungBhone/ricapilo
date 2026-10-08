@@ -7,6 +7,7 @@ namespace App\Ai;
 use App\Ai\Agents\DiscoveryIntent;
 use App\Exceptions\GenerationException;
 use App\Services\Media;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Exceptions\InsufficientCreditsException;
+use Laravel\Ai\Exceptions\ProviderConnectionException;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
+use Laravel\Ai\Exceptions\RateLimitedException;
 use Laravel\Ai\PendingResponses\PendingTranscriptionGeneration;
 use Throwable;
 
@@ -74,8 +79,8 @@ class OpenRouter
 
         try {
             $response = $agent->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90);
-        } catch (Throwable) {
-            throw new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings');
+        } catch (Throwable $throwable) {
+            throw $this->generationError($throwable, 'app.recap_writing_failed_unknown_cause');
         }
 
         if (trim($response->text) === '') {
@@ -99,8 +104,8 @@ class OpenRouter
             return (new DiscoveryIntent)
                 ->prompt($prompt, provider: 'openrouter', model: $model, timeout: 90)
                 ->toArray();
-        } catch (Throwable) {
-            throw new GenerationException('app.ai_generation_failed_check_your_key_credits_and_model_settings');
+        } catch (Throwable $throwable) {
+            throw $this->generationError($throwable, 'app.discovery_failed_unknown_cause');
         }
     }
 
@@ -144,12 +149,12 @@ class OpenRouter
 
             $response = $request->generate(provider: 'openrouter', model: $model);
             if (trim($response->text) === '') {
-                throw new GenerationException('app.transcription_failed_check_the_selected_model_and_source_audio');
+                throw new GenerationException('app.transcription_returned_no_text');
             }
 
             return ['text' => $response->text, 'usage' => $response->usage->toArray()];
-        } catch (Throwable) {
-            throw new GenerationException('app.transcription_failed_check_the_selected_model_and_source_audio');
+        } catch (Throwable $throwable) {
+            throw $this->generationError($throwable, 'app.transcription_failed_unknown_cause');
         }
     }
 
@@ -162,7 +167,7 @@ class OpenRouter
             $response = Audio::of($text)->voice($voice)->timeout(90)->generate(provider: 'openrouter', model: $model);
             $bytes = base64_decode($response->audio, true);
             if ($bytes === false || $bytes === '') {
-                throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
+                throw new GenerationException('app.narration_returned_invalid_audio');
             }
 
             if ($response->mimeType() === 'audio/pcm') {
@@ -172,12 +177,36 @@ class OpenRouter
             $hasId3Header = str_starts_with($bytes, 'ID3');
             $hasMpegFrameSync = strlen($bytes) > 1 && ord($bytes[0]) === 255 && (ord($bytes[1]) & 224) === 224;
             if (! $hasId3Header && ! $hasMpegFrameSync) {
-                throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
+                throw new GenerationException('app.narration_returned_invalid_audio');
             }
 
             return $bytes;
-        } catch (Throwable) {
-            throw new GenerationException('app.narration_failed_check_that_the_model_supports_this_voice_and_burmese');
+        } catch (Throwable $throwable) {
+            throw $this->generationError($throwable, 'app.narration_failed_unknown_cause');
         }
+    }
+
+    private function generationError(Throwable $throwable, string $fallback): GenerationException
+    {
+        if ($throwable instanceof GenerationException) {
+            return $throwable;
+        }
+
+        $message = $fallback;
+        for ($cause = $throwable; $cause instanceof Throwable; $cause = $cause->getPrevious()) {
+            $message = match (true) {
+                $cause instanceof InsufficientCreditsException => 'app.openrouter_insufficient_credits',
+                $cause instanceof RateLimitedException => 'app.openrouter_rate_limited',
+                $cause instanceof ProviderOverloadedException => 'app.openrouter_temporarily_unavailable',
+                $cause instanceof ProviderConnectionException => 'app.openrouter_connection_failed',
+                $cause instanceof RequestException && in_array($cause->response->status(), [401, 403], true) => 'app.openrouter_access_rejected',
+                default => $fallback,
+            };
+            if ($message !== $fallback) {
+                break;
+            }
+        }
+
+        return new GenerationException($message, previous: $throwable);
     }
 }

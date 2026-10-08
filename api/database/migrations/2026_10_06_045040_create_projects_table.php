@@ -20,6 +20,7 @@ return new class extends Migration
             $t->longText('script')->nullable();
             $t->string('status')->default('draft')->index();
             $t->string('stage')->nullable();
+            $t->json('generation_progress')->nullable();
             $t->text('error')->nullable();
             $t->string('audio_path')->nullable();
             $t->string('video_path')->nullable();

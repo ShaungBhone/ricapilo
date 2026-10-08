@@ -284,7 +284,19 @@
     "apiFromThePlatformPopularityFeed": "Popular recently.",
     "apiMatchesYourTopic": "Matches your topic.",
     "apiRegionalChartUnavailableShowingGlobalResults": "Showing broader popular results.",
-    "apiVideoSearchUnavailablePleaseTryAgain": "Video search is temporarily unavailable. Please try again."
+    "apiVideoSearchUnavailablePleaseTryAgain": "Video search is temporarily unavailable. Please try again.",
+    "apiOpenrouterInsufficientCredits": "OpenRouter has insufficient credits or available quota. Check your balance and usage limits, then retry.",
+    "apiOpenrouterRateLimited": "OpenRouter is receiving too many requests. Wait a moment, then retry.",
+    "apiOpenrouterTemporarilyUnavailable": "OpenRouter or the selected provider is temporarily unavailable. Try again later.",
+    "apiOpenrouterConnectionFailed": "Could not reach OpenRouter. Check the connection and try again.",
+    "apiOpenrouterAccessRejected": "OpenRouter rejected the credentials or access to this model. Check your API key and model access, then retry.",
+    "apiRecapWritingFailedUnknownCause": "Recap writing failed. The cause could not be determined. Try again.",
+    "apiDiscoveryFailedUnknownCause": "Video discovery failed. The cause could not be determined. Try again.",
+    "apiTranscriptionFailedUnknownCause": "Transcription failed. The cause could not be determined. Try again.",
+    "apiNarrationFailedUnknownCause": "Narration failed. The cause could not be determined. Try again.",
+    "apiTranscriptionReturnedNoText": "The transcription returned no text. Try another transcription model or provide a transcript.",
+    "apiNarrationReturnedInvalidAudio": "Narration returned no usable audio. Try another voice or narration model.",
+    "apiNarrationAudioConversionFailed": "Narration audio could not be converted. Try again or use another narration model."
   },
   "profile": {
     "title": "Profile",
@@ -416,5 +428,31 @@
     "selectedSlot": "Selected slot",
     "narration": "Narration",
     "sourceAudio": "Source audio"
+  },
+  "recapProgress": {
+    "title": "Creating your recap",
+    "panelTitle": "Recap progress",
+    "panelDescription": "Select a recap to see its details.",
+    "creating": "Creating recap",
+    "queued": "Waiting to start",
+    "downloading": "Downloading source video",
+    "extracting": "Extracting audio",
+    "transcribing": "Transcribing audio",
+    "writing": "Writing recap",
+    "complete": "Recap ready",
+    "failed": "Recap failed",
+    "retrying": "Retrying recap",
+    "restoring": "Loading recap details",
+    "unavailable": "Status unavailable",
+    "connectionError": "Unable to check progress. Your recap may still be processing. Check again to reconnect.",
+    "checkAgain": "Check again",
+    "retry": "Retry",
+    "openEditor": "Open editor",
+    "dismiss": "Dismiss",
+    "minimize": "Continue in background",
+    "ready": "Your recap script is ready. Open the editor to review it and create narration or video.",
+    "backgroundHint": "You can close this dialog. Progress will stay in the bottom-right corner while your recap continues.",
+    "stageHint": "Progress follows processing stages, not time remaining.",
+    "showDetails": "Show progress for {title}"
   }
 }

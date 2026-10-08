@@ -22,6 +22,31 @@ Register an account in the app. Email verification is optional for now. To requi
 
 The local mail inbox is for development. Configure a real SMTP service for deployment.
 
+### Run the queue in the background
+
+Docker Compose includes a `worker` service that processes queued media jobs. The startup command above starts it along with the other services. To start only the worker and its dependencies, run from the project root:
+
+```sh
+docker compose up -d worker
+```
+
+The `-d` flag runs containers in the background, so they keep running after you close the terminal. The worker uses one process, one attempt per job, and a 30-minute job timeout.
+
+Check the worker's status and follow its logs:
+
+```sh
+docker compose ps worker
+docker compose logs -f worker
+```
+
+Press Ctrl+C to stop following logs; the worker keeps running. To stop the worker container:
+
+```sh
+docker compose stop worker
+```
+
+Start it again with `docker compose up -d worker`. Detached mode does not automatically restart a worker that exits or restart it after Docker restarts; the current Compose configuration has no restart policy.
+
 ### Apply code changes in Docker
 
 The default Docker frontend runs a production build containing the code from its last image build. `docker compose up` reuses existing images, so local code changes do not appear automatically. After editing the app, rebuild and recreate the services:

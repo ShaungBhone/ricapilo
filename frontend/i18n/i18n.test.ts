@@ -85,6 +85,27 @@ describe("translation catalogs", () => {
     const burmese = createTranslator({ locale: "my", messages: my });
     assert.match(burmese("shared.messageCount", { count: 2 }), /၂/);
   });
+  test("tracked generation errors switch language without fetching again", () => {
+    const keys = [
+      "apiOpenrouterInsufficientCredits",
+      "apiOpenrouterRateLimited",
+      "apiOpenrouterTemporarilyUnavailable",
+      "apiOpenrouterConnectionFailed",
+      "apiOpenrouterAccessRejected",
+      "apiRecapWritingFailedUnknownCause",
+      "apiDiscoveryFailedUnknownCause",
+      "apiTranscriptionFailedUnknownCause",
+      "apiNarrationFailedUnknownCause",
+      "apiTranscriptionReturnedNoText",
+      "apiNarrationReturnedInvalidAudio",
+      "apiNarrationAudioConversionFailed",
+    ] as const;
+    for (const key of keys) {
+      const trackedError = en.shared[key];
+      assert.equal(localizeMessage(trackedError, "my"), my.shared[key]);
+      assert.equal(localizeMessage(my.shared[key], "en"), trackedError);
+    }
+  });
   test("displayed API warnings and generation errors follow language changes", () => {
     const message = "The source has no audio.";
     const translated = localizeMessage(message, "my");

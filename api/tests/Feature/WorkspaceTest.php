@@ -179,14 +179,18 @@ class WorkspaceTest extends TestCase
             'format' => 'vertical',
             'target_seconds' => 60,
             'generate_script' => true,
+            'generation_progress' => ['step' => 'complete', 'percent' => 100],
         ]);
         $response->assertCreated()
             ->assertJsonPath('status', 'queued')
             ->assertJsonPath('stage', 'script')
+            ->assertJsonPath('generation_progress', ['step' => 'queued', 'percent' => 0])
             ->assertJsonPath('has_media', false)
             ->assertJsonMissingPath('generate_script');
         $id = $response->json('id');
-        $this->getJson('/api/v1/projects/'.$id)->assertOk()->assertJsonPath('status', 'queued');
+        $this->getJson('/api/v1/projects/'.$id)->assertOk()
+            ->assertJsonPath('status', 'queued')
+            ->assertJsonPath('generation_progress', ['step' => 'queued', 'percent' => 0]);
         $this->getJson('/api/v1/projects/'.$id)->assertOk();
         $this->postJson('/api/v1/projects/'.$id.'/prepare')->assertConflict();
         $this->postJson('/api/v1/projects/'.$id.'/generate', ['stage' => 'script'])->assertConflict();
@@ -287,6 +291,7 @@ class WorkspaceTest extends TestCase
         $this->getJson('/api/v1/projects/'.$id)
             ->assertOk()
             ->assertJsonPath('status', 'script_ready')
+            ->assertJsonPath('generation_progress', ['step' => 'complete', 'percent' => 100])
             ->assertJsonPath('transcript', 'A faithful source transcript.')
             ->assertJsonPath('script', 'မြန်မာ အနှစ်ချုပ်')
             ->assertJsonPath('has_media', true)
@@ -327,6 +332,7 @@ class WorkspaceTest extends TestCase
             ->getJson('/api/v1/projects/'.$project->id)
             ->assertOk()
             ->assertJsonPath('status', 'failed')
+            ->assertJsonPath('generation_progress', ['step' => 'downloading', 'percent' => 10])
             ->assertJsonPath('source_unavailable', true);
         $this->withHeader('Accept-Language', 'en')
             ->getJson('/api/v1/projects/'.$project->id)
@@ -334,6 +340,7 @@ class WorkspaceTest extends TestCase
             ->assertJsonPath('source_unavailable', true);
         $this->postJson('/api/v1/projects/'.$project->id.'/generate', ['stage' => 'script'])
             ->assertAccepted()
+            ->assertJsonPath('generation_progress', ['step' => 'queued', 'percent' => 0])
             ->assertJsonPath('source_unavailable', false);
         Queue::assertPushed(ProcessProject::class, 1);
         $job->failed(new GenerationException('Provider request failed'));
