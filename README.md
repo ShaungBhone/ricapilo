@@ -212,7 +212,7 @@ Back up PostgreSQL, the media volume, and APP_KEY securely together. The rendere
 **Sources & community**
 
 - [ ] Additional discovery platforms beyond YouTube and Bilibili
-- [ ] CONTRIBUTING guide covering setup, checks, and pull request conventions
+- [x] CONTRIBUTING guide covering setup, checks, and pull request conventions
 - [ ] GitHub issue and pull request templates
 
 Want to help? Open an issue to discuss a roadmap item before starting work.
