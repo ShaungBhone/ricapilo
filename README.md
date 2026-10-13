@@ -2,7 +2,19 @@
   <img src="docs/assets/audio-lines.svg" alt="" width="24" height="24"> Ricapilo
 </h1>
 
+<p align="center">
+  <a href="https://github.com/ShaungBhone/ricapilo/stargazers"><img src="https://img.shields.io/github/stars/ShaungBhone/ricapilo" alt="GitHub stars"></a>
+  <a href="https://github.com/ShaungBhone/ricapilo/forks"><img src="https://img.shields.io/github/forks/ShaungBhone/ricapilo" alt="GitHub forks"></a>
+  <a href="https://github.com/ShaungBhone/ricapilo/graphs/contributors"><img src="https://img.shields.io/github/contributors/ShaungBhone/ricapilo" alt="Contributors"></a>
+  <a href="https://github.com/ShaungBhone/ricapilo/commits/main"><img src="https://img.shields.io/github/last-commit/ShaungBhone/ricapilo" alt="Last commit"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ShaungBhone/ricapilo" alt="License"></a>
+</p>
+
 An open-source Burmese AI recap workspace: Laravel 13 API, Next.js 16 frontend, and an isolated Remotion video renderer. Uses Bun, Docker Compose, Laravel, and shadcn.
+
+<p align="center">
+  <img src="docs/assets/screenshot.png" alt="Ricapilo home: discovery search for Korean movie trailers with recap-ready video results" width="900">
+</p>
 
 ## Start with Docker
 
@@ -188,6 +200,28 @@ docker compose run --rm --no-deps -e REMOTION_RENDER_TEST=1 renderer node --test
 Compose is configured for local use: localhost ports, local development mail, and APP_ENV=local. Before deployment, set the external HTTPS FRONTEND_URL and matching APP_URL, configure real SMTP, set APP_ENV=production and secure session cookies, and place the frontend behind TLS. Next.js embeds API_INTERNAL_URL in its rewrites at build time; rebuild when changing that address.
 
 Back up PostgreSQL, the media volume, and APP_KEY securely together. The renderer token and database credentials must remain private. API and renderer ports should stay internal. Keep provider models and media tools updated. Configure per-user quotas and additional workers based on your deployment's capacity.
+
+## Roadmap
+
+**Media & captions**
+
+- [ ] Word-level caption alignment instead of paragraph-duration estimates
+- [ ] More caption styles beyond clean bottom and boxed minimal
+- [ ] Timeline editor for trimming footage and adjusting caption and overlay timing
+
+**Sources & community**
+
+- [ ] Additional discovery platforms beyond YouTube and Bilibili
+- [ ] CONTRIBUTING guide covering setup, checks, and pull request conventions
+- [ ] GitHub issue and pull request templates
+
+Want to help? Open an issue to discuss a roadmap item before starting work.
+
+## Star history
+
+<a href="https://star-history.com/#ShaungBhone/ricapilo&Date">
+  <img src="https://api.star-history.com/svg?repos=ShaungBhone/ricapilo&type=Date" alt="Star history chart" width="600">
+</a>
 
 ## Open-source scope
 

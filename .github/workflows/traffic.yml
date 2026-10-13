@@ -1,0 +1,66 @@
+name: Traffic
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: traffic
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Switch to the traffic branch
+        run: |
+          if git fetch --depth=1 origin traffic:traffic; then
+            git switch traffic
+          else
+            git switch --orphan traffic
+          fi
+      - name: Record traffic
+        env:
+          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Add a TRAFFIC_TOKEN secret: a fine-grained token for this repository with Administration read-only access."
+            exit 1
+          fi
+          today=$(date -u +%F)
+
+          # Merge rows from stdin into a CSV keyed by date; new rows replace existing rows for the same date.
+          merge() {
+            local file=$1 header=$2
+            {
+              cat
+              if [ -f "$file" ]; then tail -n +2 "$file"; fi
+            } | awk -F, 'NF && !seen[$1]++' | sort > "$file.tmp"
+            { echo "$header"; cat "$file.tmp"; } > "$file"
+            rm "$file.tmp"
+          }
+
+          for kind in clones views; do
+            gh api "repos/$REPO/traffic/$kind" \
+              --jq ".$kind[] | \"\(.timestamp[:10]),\(.count),\(.uniques)\"" \
+              | merge "$kind.csv" date,count,uniques
+          done
+
+          gh api "repos/$REPO" \
+            --jq "\"$today,\(.stargazers_count),\(.forks_count),\(.subscribers_count)\"" \
+            | merge stars.csv date,stars,forks,watchers
+
+          mkdir -p referrers
+          {
+            echo referrer,count,uniques
+            gh api "repos/$REPO/traffic/popular/referrers" --jq '.[] | "\(.referrer),\(.count),\(.uniques)"'
+          } > "referrers/$today.csv"
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Record traffic for $(date -u +%F)"
+            git push origin traffic
+          fi
