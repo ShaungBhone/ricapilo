@@ -34,6 +34,30 @@ Register an account in the app. Email verification is optional for now. To requi
 
 The local mail inbox is for development. Configure a real SMTP service for deployment.
 
+### How to set up with an AI assistant
+
+Open the cloned repository in your AI coding assistant, then copy and paste this prompt:
+
+```text
+Help me set up Ricapilo locally using Docker Compose.
+
+Read README.md, scripts/setup.sh, and the Compose configuration first.
+Check that Docker and Compose are installed and Docker is running.
+Run the documented setup script, preserve any existing .env, and
+build and start the services in the background.
+
+Guide me through adding OPENROUTER_API_KEY and, optionally,
+YOUTUBE_API_KEY to the root .env without displaying their values.
+Recreate the API and worker after configuration changes.
+
+Check service status and logs, resolve startup problems, and confirm
+the app is available at http://localhost:3000. Explain how to register
+an account and create an assistant with the required models and voice.
+Report any remaining steps I need to complete.
+```
+
+Need help with setup? Join our [Discord community](https://discord.gg/qKPA8AuZUc).
+
 ### Run the queue in the background
 
 Docker Compose includes a `worker` service that processes queued media jobs. The startup command above starts it along with the other services. To start only the worker and its dependencies, run from the project root:
