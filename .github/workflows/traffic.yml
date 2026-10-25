@@ -1,7 +1,5 @@
 name: Traffic
 on:
-  schedule:
-    - cron: '17 3 * * *'
   workflow_dispatch:
 permissions:
   contents: write
