@@ -21,6 +21,8 @@ class StoreProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'split_enabled' => 'sometimes|boolean',
+            'split_minutes' => 'sometimes|integer|between:1,60',
             'title' => 'required|string|max:255',
             'assistant_id' => ['required', Rule::exists('assistants', 'id')->where('user_id', $this->user()->id)],
             'source' => 'required|in:upload,youtube,bilibili',

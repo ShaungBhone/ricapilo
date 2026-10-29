@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EditorController;
+use App\Http\Controllers\VideoPartsController;
 use App\Http\Controllers\WorkspaceController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +48,8 @@ Route::prefix('api/v1')->group(function (): void {
         Route::post('/projects/{id}/assets', [EditorController::class, 'upload']);
         Route::get('/projects/{id}/assets/{assetId}/stream', [EditorController::class, 'stream']);
         Route::delete('/projects/{id}/assets/{assetId}', [EditorController::class, 'delete']);
+        Route::post('/projects/{id}/split', [VideoPartsController::class, 'split'])->middleware('throttle:generation');
+        Route::get('/projects/{id}/parts/{kind}/{revision}/{number}', [VideoPartsController::class, 'file'])->whereIn('kind', ['source', 'recap'])->whereUuid('revision')->whereNumber('number');
         Route::get('/projects/{id}', [WorkspaceController::class, 'showProject']);
         Route::patch('/projects/{id}', [WorkspaceController::class, 'updateProject']);
         Route::post('/projects/{id}/upload', [WorkspaceController::class, 'upload']);

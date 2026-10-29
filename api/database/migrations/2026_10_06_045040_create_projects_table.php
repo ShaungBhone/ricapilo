@@ -32,6 +32,9 @@ return new class extends Migration
             $t->string('format')->default('vertical');
             $t->string('caption_style')->default('clean-bottom');
             $t->unsignedInteger('target_seconds')->default(60);
+            $t->boolean('split_enabled')->default(false);
+            $t->unsignedInteger('split_minutes')->default(5);
+            $t->json('split_results')->nullable();
             $t->timestamps();
         });
     }

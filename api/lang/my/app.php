@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'video_splitting_failed' => 'ဗီဒီယို အပိုင်းခွဲခြင်း မအောင်မြင်ပါ။ ထပ်မံကြိုးစားပါ။',
     'video_search_unavailable_please_try_again' => 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။ ထပ်မံကြိုးစားပါ။',
     'bilibili_is_temporarily_unavailable' => 'ဗီဒီယိုရှာဖွေမှုကို ယာယီ အသုံးပြု၍ မရနိုင်ပါ။',
     'from_the_platform_popularity_feed' => 'မကြာသေးမီက လူကြိုက်များနေသည်။',

@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\EditorSettings;
 use App\Services\Media;
+use App\Services\VideoSplitting;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -24,7 +25,9 @@ class ProcessProject implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 1;
+    public int $tries = 200;
+
+    public int $maxExceptions = 1;
 
     public int $timeout = 1800;
 
@@ -32,7 +35,7 @@ class ProcessProject implements ShouldQueue
 
     public function middleware(): array
     {
-        return [(new WithoutOverlapping('project:'.$this->projectId))->expireAfter(1900)->dontRelease()];
+        return [(new WithoutOverlapping('project:'.$this->projectId))->shared()->expireAfter(1900)->releaseAfter(10)];
     }
 
     public function handle(OpenRouter $ai, Media $media): void
@@ -182,6 +185,7 @@ class ProcessProject implements ShouldQueue
             }
 
             $project->update(['video_path' => $relative, 'status' => 'ready']);
+            app(VideoSplitting::class)->queue($project->id, 'recap');
         }
     }
 

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'user_id',
@@ -34,13 +35,64 @@ use Illuminate\Database\Eloquent\Model;
     'caption_style',
     'editor_settings',
     'editor_assets',
+    'split_enabled',
+    'split_minutes',
+    'split_results',
 ])]
-#[Hidden(['media_path', 'audio_path', 'video_path', 'editor_assets'])]
+#[Hidden(['media_path', 'audio_path', 'video_path', 'editor_assets', 'split_results'])]
 class Project extends Model
 {
     use HasFactory;
 
-    protected $appends = ['has_audio', 'has_video', 'has_media', 'source_unavailable'];
+    protected $appends = ['has_audio', 'has_video', 'has_media', 'source_unavailable', 'video_splits'];
+
+    protected static function booted(): void
+    {
+        static::saved(function (Project $project): void {
+            $previous = $project->getOriginal('split_results') ?? [];
+            $current = $project->split_results ?? [];
+            foreach ($previous as $kind => $result) {
+                if ($result['status'] === 'ready' && ($current[$kind]['revision'] ?? null) !== $result['revision']) {
+                    Storage::disk('local')->deleteDirectory(
+                        'projects/'.$project->id.'/parts/'.$kind.'/'.$result['revision'],
+                    );
+                }
+            }
+        });
+        static::saving(function (Project $project): void {
+            $results = $project->split_results ?? [];
+            if ($project->isDirty(['split_enabled', 'split_minutes'])) {
+                $results = [];
+            }
+
+            if ($project->isDirty('media_path')) {
+                unset($results['source']);
+            }
+
+            if ($project->isDirty('video_path') || ($project->isDirty('status') && $project->status === 'queued')) {
+                unset($results['recap']);
+            }
+
+            $project->split_results = $results ?: null;
+        });
+    }
+
+    protected function videoSplits(): Attribute
+    {
+        return Attribute::make(get: function (): array {
+            $results = $this->split_results ?? [];
+            foreach ($results as &$result) {
+                unset($result['input']);
+                foreach ($result['parts'] as &$part) {
+                    unset($part['path']);
+                }
+
+                $result['error'] = $result['error'] ? __($result['error']) : null;
+            }
+
+            return $results;
+        });
+    }
 
     protected function sourceUnavailable(): Attribute
     {
@@ -84,6 +136,9 @@ class Project extends Model
             'captions' => 'array',
             'usage' => 'array',
             'target_seconds' => 'integer',
+            'split_enabled' => 'boolean',
+            'split_minutes' => 'integer',
+            'split_results' => 'array',
         ];
     }
 }

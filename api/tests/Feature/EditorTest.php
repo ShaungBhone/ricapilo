@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Ai\OpenRouter;
 use App\Jobs\ProcessProject;
+use App\Jobs\SplitVideo;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\EditorSettings;
@@ -281,8 +282,10 @@ class EditorTest extends TestCase
 
     public function test_render_worker_sends_saved_editor_state_without_calling_ai(): void
     {
+        Queue::fake([SplitVideo::class]);
         Storage::fake('local');
         $project = $this->ownProject([
+            'split_enabled' => true,
             'assistant_id' => null,
             'audio_path' => 'projects/1/voice.mp3',
             'captions' => [['text' => 'Caption', 'startMs' => 0, 'endMs' => 1000]],
@@ -302,6 +305,7 @@ class EditorTest extends TestCase
         (new ProcessProject($project->id, 'video'))->handle(app(OpenRouter::class), app(Media::class));
         $this->assertSame('ready', $project->fresh()->status);
         Http::assertSentCount(1);
+        Queue::assertPushed(SplitVideo::class, fn ($job): bool => $job->kind === 'recap' && $job->input === 'projects/'.$project->id.'/recap.mp4');
     }
 
     public function test_media_metadata_ignores_cover_art_and_uses_rotated_display_dimensions(): void

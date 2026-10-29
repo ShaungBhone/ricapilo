@@ -17,6 +17,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import { SplitControls } from "@/components/video-parts";
 import { Feedback } from "@/components/feedback";
 export default function NewProject() {
   const t = useTranslations();
@@ -25,6 +26,8 @@ export default function NewProject() {
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [splitEnabled, setSplitEnabled] = useState(true);
+  const [splitMinutes, setSplitMinutes] = useState(5);
   useEffect(() => {
     api<Assistant[]>("/assistants")
       .then(setAssistants)
@@ -38,6 +41,8 @@ export default function NewProject() {
       const p = await api<Project>("/projects", {
         method: "POST",
         body: json({
+          split_enabled: splitEnabled,
+          split_minutes: splitMinutes,
           title: f.get("title"),
           assistant_id: Number(f.get("assistant")),
           source: "upload",
@@ -137,6 +142,13 @@ export default function NewProject() {
               </NativeSelectOption>
             </NativeSelect>
           </Field>
+          <SplitControls
+            enabled={splitEnabled}
+            minutes={splitMinutes}
+            onEnabled={setSplitEnabled}
+            onMinutes={setSplitMinutes}
+            disabled={busy}
+          />
           <Button type="submit" disabled={busy}>
             {busy ? t("projects.saving") : t("projects.createProject")}
           </Button>

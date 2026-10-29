@@ -96,7 +96,18 @@ export type Video = {
   reason: string;
 };
 export type Caption = { text: string; startMs: number; endMs: number };
+export type VideoSplit = {
+  revision: string;
+  status: "queued" | "processing" | "ready" | "failed" | "skipped";
+  progress: number;
+  error: string | null;
+  parts: { number: number; start: number; end: number; duration: number }[];
+};
 export type Project = {
+  split_enabled: boolean;
+  split_minutes: number;
+  video_splits: Partial<Record<"source" | "recap", VideoSplit>>;
+
   id: number;
   title: string;
   assistant_id: number;

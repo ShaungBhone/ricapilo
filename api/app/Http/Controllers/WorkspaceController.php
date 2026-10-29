@@ -23,6 +23,7 @@ use App\Models\Project;
 use App\Services\Discovery;
 use App\Services\EditorSettings;
 use App\Services\Media;
+use App\Services\VideoSplitting;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Client\ConnectionException;
@@ -166,6 +167,8 @@ class WorkspaceController extends Controller
         $project = DB::transaction(function () use ($request, $validated, $generateScript): Project {
             $project = Project::create([
                 'user_id' => $request->user()->id,
+                'split_enabled' => true,
+                'split_minutes' => 5,
                 ...$validated,
                 'status' => $generateScript ? 'queued' : 'draft',
                 'stage' => $generateScript ? 'script' : null,
@@ -278,6 +281,8 @@ class WorkspaceController extends Controller
         if ($oldPath && $oldPath !== $path) {
             Storage::disk('local')->delete($oldPath);
         }
+
+        app(VideoSplitting::class)->queue($project->id, 'source');
 
         return $project->fresh();
     }

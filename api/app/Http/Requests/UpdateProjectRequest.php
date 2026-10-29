@@ -16,6 +16,8 @@ class UpdateProjectRequest extends ProjectRequest
     public function rules(): array
     {
         return [
+            'split_enabled' => 'sometimes|boolean',
+            'split_minutes' => 'sometimes|integer|between:1,60',
             'title' => 'sometimes|required|string|max:255',
             'script' => 'sometimes|nullable|string|max:20000',
             'transcript' => 'sometimes|nullable|string|max:100000',

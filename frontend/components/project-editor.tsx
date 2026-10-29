@@ -60,6 +60,7 @@ import {
   fitTransform,
   clampTransform,
 } from "@/lib/crop.mjs";
+import { VideoParts } from "@/components/video-parts";
 import { CaptionTranscript } from "@/components/caption-transcript";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { Toggle } from "@base-ui/react/toggle";
@@ -1421,6 +1422,12 @@ export function ProjectEditor({ id }: { id: string }) {
           </ResizablePanelGroup>
         )}
       </div>
+      <VideoParts
+        key={`${id}-${project.split_enabled}-${project.split_minutes}`}
+        project={project}
+        disabled={processing || dirty}
+        onRefresh={() => load()}
+      />
       <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t px-4 py-2">
         <span className="mr-auto text-xs text-muted-foreground">
           {t("manualGeneration")}

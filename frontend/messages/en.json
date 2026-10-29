@@ -296,7 +296,8 @@
     "apiNarrationFailedUnknownCause": "Narration failed. The cause could not be determined. Try again.",
     "apiTranscriptionReturnedNoText": "The transcription returned no text. Try another transcription model or provide a transcript.",
     "apiNarrationReturnedInvalidAudio": "Narration returned no usable audio. Try another voice or narration model.",
-    "apiNarrationAudioConversionFailed": "Narration audio could not be converted. Try again or use another narration model."
+    "apiNarrationAudioConversionFailed": "Narration audio could not be converted. Try again or use another narration model.",
+    "apiVideoSplittingFailed": "Video splitting failed. Please retry."
   },
   "profile": {
     "title": "Profile",
@@ -454,5 +455,24 @@
     "backgroundHint": "You can close this dialog. Progress will stay in the bottom-right corner while your recap continues.",
     "stageHint": "Progress follows processing stages, not time remaining.",
     "showDetails": "Show progress for {title}"
+  },
+  "splitting": {
+    "enabled": "Automatically split video",
+    "minutes": "Minutes per part",
+    "title": "Video parts",
+    "saveSplit": "Save and split again",
+    "save": "Save settings",
+    "saving": "Saving…",
+    "source": "Uploaded video parts",
+    "recap": "Generated recap parts",
+    "queued": "Waiting to split",
+    "processing": "Splitting video",
+    "ready": "Parts ready",
+    "failed": "Splitting failed",
+    "skipped": "Audio-only source — no video parts",
+    "retry": "Retry splitting",
+    "part": "Part {number}",
+    "duration": "{seconds} seconds",
+    "download": "Download part"
   }
 }

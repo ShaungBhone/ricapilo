@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'video_splitting_failed' => 'Video splitting failed. Please retry.',
     'video_search_unavailable_please_try_again' => 'Video search is temporarily unavailable. Please try again.',
     'bilibili_is_temporarily_unavailable' => 'Video search is temporarily unavailable.',
     'from_the_platform_popularity_feed' => 'Popular recently.',
